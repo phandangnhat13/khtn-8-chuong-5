@@ -1,3 +1,2 @@
-# Welcome to your Lovable project
+# ABC XYZ
 
-TODO: Document your project here
