@@ -48,7 +48,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup defaultOpen>
+        <SidebarGroup>
           <SidebarGroupLabel className="text-xs uppercase tracking-widest text-muted-foreground/60">
             {!collapsed && "Bài học"}
           </SidebarGroupLabel>
