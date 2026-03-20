@@ -348,15 +348,6 @@ export default function Lesson2122() {
           </div>
         </div>
       </div>
-
-      <div className="glass-panel p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-2">📖 Kiến thức</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          <span className="text-primary font-medium">Mạch điện kín</span> là mạch có đường dẫn liên tục từ cực dương qua các thiết bị đến cực âm của nguồn điện.
-          Khi mạch kín, <span className="text-accent font-medium">dòng điện</span> chạy qua mạch làm đèn sáng.
-          Công tắc dùng để đóng/ngắt mạch điện.
-        </p>
-      </div>
     </div>
   );
 }

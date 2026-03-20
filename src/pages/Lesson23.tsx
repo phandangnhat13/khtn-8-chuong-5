@@ -286,22 +286,6 @@ export default function Lesson23() {
           style={{ maxHeight: "400px", background: "#0f1420" }}
         />
       </div>
-
-      <div className="glass-panel p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-2">📖 Kiến thức</h3>
-        {mode === "magnetic" ? (
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Dòng điện chạy qua cuộn dây tạo ra <span className="text-primary font-medium">từ trường</span>, 
-            có khả năng làm quay kim la bàn. Đây là <span className="text-accent font-medium">tác dụng từ</span> của dòng điện, 
-            nguyên lý hoạt động của nam châm điện và động cơ điện.
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Khi dòng điện chạy qua dây dẫn có điện trở, năng lượng điện chuyển thành <span className="text-destructive font-medium">nhiệt năng</span>, 
-            làm nóng dây dẫn. Đây là <span className="text-accent font-medium">tác dụng nhiệt</span> — nguyên lý hoạt động của bàn là, bếp điện.
-          </p>
-        )}
-      </div>
     </div>
   );
 }

@@ -304,15 +304,6 @@ export default function Lesson2425() {
           </p>
         </div>
       </div>
-
-      <div className="glass-panel p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-2">📖 Kiến thức</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          <span className="text-primary font-medium">Ampe kế</span> đo cường độ dòng điện, phải mắc <strong>nối tiếp</strong> trong mạch. 
-          <span className="text-success font-medium"> Vôn kế</span> đo hiệu điện thế, phải mắc <strong>song song</strong> với đoạn mạch cần đo. 
-          Mắc sai sẽ gây <span className="text-destructive font-medium">ngắn mạch</span>!
-        </p>
-      </div>
     </div>
   );
 }
