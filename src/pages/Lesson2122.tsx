@@ -256,6 +256,7 @@ export default function Lesson2122() {
         // Click on switch to toggle
         if (c.type === "switch") {
           setComponents(prev => prev.map(p => p.id === c.id ? { ...p, closed: !p.closed } : p));
+          play("switch");
           return;
         }
         setDragId(c.id);
