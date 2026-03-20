@@ -1,19 +1,24 @@
 import { useState, useRef, useEffect } from "react";
-import { Magnet } from "lucide-react";
+import { Magnet, Flame } from "lucide-react";
 import { LessonHeader } from "@/components/LessonHeader";
 import { ControlPanel } from "@/components/ControlPanel";
+import { useSound } from "@/hooks/useSound";
+import { Slider } from "@/components/ui/slider";
 
 export default function Lesson23() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [showParticles, setShowParticles] = useState(true);
   const [mode, setMode] = useState<"magnetic" | "thermal">("magnetic");
+  const [voltage, setVoltage] = useState([3]);
   const animRef = useRef<number>(0);
   const timeRef = useRef(0);
+  const { play } = useSound();
 
   const reset = () => {
     setIsRunning(false);
     timeRef.current = 0;
+    play("click");
   };
 
   useEffect(() => {
@@ -21,13 +26,14 @@ export default function Lesson23() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
     const W = canvas.width, H = canvas.height;
+    const v = voltage[0];
+    const vFactor = v / 3;
 
     const draw = () => {
       ctx.clearRect(0, 0, W, H);
       if (isRunning) timeRef.current += 0.016;
       const t = timeRef.current;
 
-      // Background
       ctx.fillStyle = "#0f1420";
       ctx.fillRect(0, 0, W, H);
 
@@ -46,7 +52,7 @@ export default function Lesson23() {
         ctx.textAlign = "center";
         ctx.fillText("Cuộn dây", coilX, coilY + 45);
 
-        // Battery connected
+        // Battery
         ctx.fillStyle = "#374151";
         ctx.beginPath();
         ctx.roundRect(80, 260, 50, 25, 4);
@@ -54,9 +60,9 @@ export default function Lesson23() {
         ctx.fillStyle = "#e2e8f0";
         ctx.font = "9px 'Space Grotesk'";
         ctx.textAlign = "center";
-        ctx.fillText("Pin", 105, 276);
+        ctx.fillText(`${v}V`, 105, 276);
 
-        // Wire from battery to coil
+        // Wires
         ctx.strokeStyle = isRunning ? "#3b82f6" : "#374151";
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -81,7 +87,6 @@ export default function Lesson23() {
         ctx.fill();
         ctx.stroke();
 
-        // NESW marks
         ctx.fillStyle = "#64748b";
         ctx.font = "10px 'Space Grotesk'";
         ctx.textAlign = "center";
@@ -90,12 +95,11 @@ export default function Lesson23() {
         ctx.fillText("E", compassX + 38, compassY + 4);
         ctx.fillText("W", compassX - 38, compassY + 4);
 
-        // Needle - rotates when circuit is on
-        const needleAngle = isRunning ? Math.PI / 2 + Math.sin(t * 0.5) * 0.1 : 0;
+        // Needle rotation depends on voltage
+        const needleAngle = isRunning ? (Math.PI / 2) * vFactor + Math.sin(t * 0.5) * 0.1 : 0;
         ctx.save();
         ctx.translate(compassX, compassY);
         ctx.rotate(needleAngle);
-        // Red end (N)
         ctx.fillStyle = "#ef4444";
         ctx.beginPath();
         ctx.moveTo(0, -35);
@@ -103,7 +107,6 @@ export default function Lesson23() {
         ctx.lineTo(5, 0);
         ctx.closePath();
         ctx.fill();
-        // White end (S)
         ctx.fillStyle = "#e2e8f0";
         ctx.beginPath();
         ctx.moveTo(0, 35);
@@ -111,7 +114,6 @@ export default function Lesson23() {
         ctx.lineTo(5, 0);
         ctx.closePath();
         ctx.fill();
-        // Center dot
         ctx.fillStyle = "#6b7280";
         ctx.beginPath();
         ctx.arc(0, 0, 4, 0, Math.PI * 2);
@@ -123,10 +125,10 @@ export default function Lesson23() {
         ctx.textAlign = "center";
         ctx.fillText("La bàn", compassX, compassY + 65);
 
-        // Electron particles
+        // Electron particles (speed scales with voltage)
         if (isRunning && showParticles) {
           for (let i = 0; i < 8; i++) {
-            const frac = (t * 0.3 + i * 0.125) % 1;
+            const frac = (t * 0.3 * vFactor + i * 0.125) % 1;
             let px: number, py: number;
             if (frac < 0.25) {
               px = 105 + (150 - 105) * (frac / 0.25);
@@ -151,9 +153,9 @@ export default function Lesson23() {
           ctx.shadowBlur = 0;
         }
 
-        // Magnetic field lines (when running)
+        // Magnetic field lines
         if (isRunning) {
-          ctx.strokeStyle = "rgba(59,130,246,0.2)";
+          ctx.strokeStyle = `rgba(59,130,246,${0.15 * vFactor})`;
           ctx.lineWidth = 1;
           for (let i = 0; i < 4; i++) {
             const r = 70 + i * 20;
@@ -163,15 +165,24 @@ export default function Lesson23() {
           }
         }
 
+        // Angle readout
+        if (isRunning) {
+          const deg = Math.round((needleAngle / Math.PI) * 180);
+          ctx.fillStyle = "#3b82f6";
+          ctx.font = "bold 14px 'JetBrains Mono'";
+          ctx.textAlign = "center";
+          ctx.fillText(`Góc lệch: ${deg}°`, compassX, compassY + 80);
+        }
+
         ctx.fillStyle = "#475569";
         ctx.font = "12px 'Space Grotesk'";
         ctx.textAlign = "center";
-        ctx.fillText("Nhấn 'Chạy' để xem tác dụng từ của dòng điện lên la bàn", W / 2, H - 15);
+        ctx.fillText("Nhấn 'Chạy' để xem tác dụng từ — Thay đổi điện áp bằng thanh trượt", W / 2, H - 15);
 
       } else {
         // Thermal effect
         const coilX = W / 2, coilY = 200;
-        const heatLevel = isRunning ? Math.min(t / 5, 1) : 0;
+        const heatLevel = isRunning ? Math.min(t * vFactor / 5, 1) : 0;
 
         // Heating coil
         ctx.lineWidth = 4;
@@ -191,8 +202,9 @@ export default function Lesson23() {
         }
         ctx.shadowBlur = 0;
 
-        // Temperature label
-        const temp = Math.round(25 + heatLevel * 475);
+        // Temperature (scales with voltage)
+        const maxTemp = 25 + vFactor * 475;
+        const temp = Math.round(25 + heatLevel * (maxTemp - 25));
         ctx.fillStyle = heatLevel > 0.5 ? "#ef4444" : "#94a3b8";
         ctx.font = "bold 24px 'JetBrains Mono'";
         ctx.textAlign = "center";
@@ -201,8 +213,8 @@ export default function Lesson23() {
         ctx.font = "11px 'Space Grotesk'";
         ctx.fillText("Dây đốt nóng", coilX, coilY + 90);
 
-        // Heat waves
-        if (heatLevel > 0.3) {
+        // Heat waves / smoke particles
+        if (heatLevel > 0.3 && showParticles) {
           ctx.strokeStyle = `rgba(239,68,68,${heatLevel * 0.3})`;
           ctx.lineWidth = 1;
           for (let i = 0; i < 5; i++) {
@@ -212,6 +224,17 @@ export default function Lesson23() {
             ctx.moveTo(ox, coilY - 25);
             ctx.quadraticCurveTo(ox + 5, waveY, ox + 10, coilY - 25 - 20);
             ctx.stroke();
+          }
+
+          // Smoke particles
+          for (let i = 0; i < 8; i++) {
+            const smokeX = coilX - 50 + Math.random() * 100;
+            const smokeY = coilY - 40 - (t * 20 + i * 15) % 80;
+            const alpha = Math.max(0, heatLevel * 0.3 - ((t * 20 + i * 15) % 80) / 300);
+            ctx.fillStyle = `rgba(148,163,184,${alpha})`;
+            ctx.beginPath();
+            ctx.arc(smokeX, smokeY, 3 + Math.random() * 4, 0, Math.PI * 2);
+            ctx.fill();
           }
         }
 
@@ -223,7 +246,7 @@ export default function Lesson23() {
         ctx.fillStyle = "#e2e8f0";
         ctx.font = "9px 'Space Grotesk'";
         ctx.textAlign = "center";
-        ctx.fillText("Pin", coilX, 326);
+        ctx.fillText(`${v}V`, coilX, 326);
         
         ctx.strokeStyle = isRunning ? "#3b82f6" : "#374151";
         ctx.lineWidth = 2;
@@ -241,36 +264,36 @@ export default function Lesson23() {
         ctx.fillStyle = "#475569";
         ctx.font = "12px 'Space Grotesk'";
         ctx.textAlign = "center";
-        ctx.fillText("Nhấn 'Chạy' để xem tác dụng nhiệt của dòng điện", W / 2, H - 15);
+        ctx.fillText("Nhấn 'Chạy' để xem tác dụng nhiệt — Điều chỉnh điện áp", W / 2, H - 15);
       }
 
       animRef.current = requestAnimationFrame(draw);
     };
     draw();
     return () => cancelAnimationFrame(animRef.current);
-  }, [mode, isRunning, showParticles]);
+  }, [mode, isRunning, showParticles, voltage]);
 
   return (
     <div className="space-y-4">
       <LessonHeader icon={Magnet} title="Bài 23: Tác dụng dòng điện" subtitle="Tác dụng từ và tác dụng nhiệt">
         <ControlPanel
           isRunning={isRunning}
-          onToggleRun={() => setIsRunning(!isRunning)}
+          onToggleRun={() => { setIsRunning(!isRunning); play("switch"); }}
           onReset={reset}
           showParticles={showParticles}
-          onToggleParticles={() => setShowParticles(!showParticles)}
+          onToggleParticles={() => { setShowParticles(!showParticles); play("click"); }}
         />
       </LessonHeader>
 
       <div className="flex gap-2 mb-2">
         <button
-          onClick={() => { setMode("magnetic"); reset(); }}
+          onClick={() => { setMode("magnetic"); reset(); play("click"); }}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "magnetic" ? "bg-primary/20 text-primary border border-primary/30" : "bg-secondary/50 text-muted-foreground border border-border/30"}`}
         >
           🧲 Tác dụng từ
         </button>
         <button
-          onClick={() => { setMode("thermal"); reset(); }}
+          onClick={() => { setMode("thermal"); reset(); play("click"); }}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "thermal" ? "bg-destructive/20 text-destructive border border-destructive/30" : "bg-secondary/50 text-muted-foreground border border-border/30"}`}
         >
           🔥 Tác dụng nhiệt
@@ -285,6 +308,27 @@ export default function Lesson23() {
           className="w-full rounded-lg"
           style={{ maxHeight: "400px", background: "#0f1420" }}
         />
+      </div>
+
+      {/* Voltage slider */}
+      <div className="glass-panel p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-muted-foreground">
+            {mode === "magnetic" ? "⚡ Điện áp nguồn" : "🔥 Điện áp nguồn"}
+          </span>
+          <span className="text-xs font-mono text-primary font-bold">{voltage[0]}V</span>
+        </div>
+        <Slider
+          value={voltage}
+          onValueChange={(v) => { setVoltage(v); timeRef.current = 0; }}
+          min={1}
+          max={9}
+          step={0.5}
+        />
+        <div className="flex justify-between mt-1">
+          <span className="text-[10px] text-muted-foreground/50">1V</span>
+          <span className="text-[10px] text-muted-foreground/50">9V</span>
+        </div>
       </div>
     </div>
   );
