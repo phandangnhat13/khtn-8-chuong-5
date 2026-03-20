@@ -260,13 +260,6 @@ export default function Lesson20() {
         </div>
       </div>
 
-      <div className="glass-panel p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-2">📖 Kiến thức</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Khi cọ xát thước nhựa vào vải len, các electron di chuyển từ vải sang thước, làm thước bị <span className="text-primary font-medium">nhiễm điện âm</span>. 
-          Thước nhiễm điện có khả năng <span className="text-accent font-medium">hút các vật nhẹ</span> như mẩu giấy nhỏ.
-        </p>
-      </div>
     </div>
   );
 }
