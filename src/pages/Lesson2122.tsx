@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { CircuitBoard } from "lucide-react";
 import { LessonHeader } from "@/components/LessonHeader";
 import { ControlPanel } from "@/components/ControlPanel";
+import { useSound } from "@/hooks/useSound";
 
 interface Component {
   id: string;
