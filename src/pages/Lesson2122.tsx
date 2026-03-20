@@ -36,6 +36,7 @@ export default function Lesson2122() {
   const [circuitClosed, setCircuitClosed] = useState(false);
   const animRef = useRef<number>(0);
   const particlePhase = useRef(0);
+  const { play } = useSound();
 
   const checkCircuit = useCallback((comps: Component[]) => {
     const hasBattery = comps.some(c => c.type === "battery");
