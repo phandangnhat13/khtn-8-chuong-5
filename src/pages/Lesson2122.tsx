@@ -288,10 +288,10 @@ export default function Lesson2122() {
       <LessonHeader icon={CircuitBoard} title="Bài 21-22: Mạch điện" subtitle="Xây dựng và kiểm tra mạch điện">
         <ControlPanel
           isRunning={isRunning}
-          onToggleRun={() => setIsRunning(!isRunning)}
-          onReset={reset}
+          onToggleRun={() => { setIsRunning(!isRunning); play("switch"); }}
+          onReset={() => { reset(); play("click"); }}
           showParticles={showParticles}
-          onToggleParticles={() => setShowParticles(!showParticles)}
+          onToggleParticles={() => { setShowParticles(!showParticles); play("click"); }}
         />
       </LessonHeader>
 
