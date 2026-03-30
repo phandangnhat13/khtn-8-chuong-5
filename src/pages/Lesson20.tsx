@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Zap } from "lucide-react";
 import { LessonHeader } from "@/components/LessonHeader";
 import { ControlPanel } from "@/components/ControlPanel";
+import { LessonMedia } from "@/components/LessonMedia";
 import { useSound } from "@/hooks/useSound";
 import { Slider } from "@/components/ui/slider";
 
@@ -256,6 +257,13 @@ export default function Lesson20() {
           onToggleParticles={() => { setShowParticles(!showParticles); play("click"); }}
         />
       </LessonHeader>
+
+      <LessonMedia
+        title="Nhiễm điện do cọ xát"
+        summary="Cọ xát thước nhựa với vải len tạo ra sự dịch chuyển electron và làm thước nhiễm điện, thu hút mẩu giấy nhẹ.
+Các học sinh có thể tương tác để thấy lực hút mạnh lên khi điện tích tăng." 
+        audioText="Trong bài này, bạn sẽ thấy thước nhựa nhiễm điện khi được cọ xát với vải len. Các electron di chuyển từ vải sang thước, tạo ra lực hấp dẫn đến những mẩu giấy." 
+      />
 
       <div className="glass-panel p-4">
         <canvas

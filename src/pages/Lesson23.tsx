@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Magnet, Flame } from "lucide-react";
 import { LessonHeader } from "@/components/LessonHeader";
 import { ControlPanel } from "@/components/ControlPanel";
+import { LessonMedia } from "@/components/LessonMedia";
 import { useSound } from "@/hooks/useSound";
 import { Slider } from "@/components/ui/slider";
 
@@ -284,6 +285,13 @@ export default function Lesson23() {
           onToggleParticles={() => { setShowParticles(!showParticles); play("click"); }}
         />
       </LessonHeader>
+
+      <LessonMedia
+        title="Tác dụng của dòng điện"
+        summary="Quan sát tác dụng từ khi cuộn dây cấp điện tạo ra từ trường và tác dụng nhiệt khi dây dẫn nóng lên dưới điện áp.
+Bạn có thể chuyển đổi giữa chế độ từ trường và nhiệt để thấy khác biệt." 
+        audioText="Trong bài này, dòng điện có thể tạo ra từ trường làm lệch kim la bàn hoặc sinh nhiệt làm dây đốt nóng lên. Hãy thử thay đổi điện áp để thấy hiệu ứng." 
+      />
 
       <div className="flex gap-2 mb-2">
         <button

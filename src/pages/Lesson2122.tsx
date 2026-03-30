@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { CircuitBoard } from "lucide-react";
 import { LessonHeader } from "@/components/LessonHeader";
 import { ControlPanel } from "@/components/ControlPanel";
+import { LessonMedia } from "@/components/LessonMedia";
 import { useSound } from "@/hooks/useSound";
 
 interface Component {
@@ -294,6 +295,12 @@ export default function Lesson2122() {
           onToggleParticles={() => { setShowParticles(!showParticles); play("click"); }}
         />
       </LessonHeader>
+
+      <LessonMedia
+        title="Mạch điện và nguồn điện"
+        summary="Học sinh kéo thả linh kiện để dựng mạch điện và bật công tắc. Mạch kín cho phép dòng điện chạy qua bóng đèn và ampe kế." 
+        audioText="Bài học này cho thấy mạch điện chỉ hoạt động khi các linh kiện được nối thành mạch kín và công tắc được đóng. Dòng điện chảy từ cực dương sang cực âm của nguồn." 
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 glass-panel p-4">
