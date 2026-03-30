@@ -1,65 +1,74 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ClipboardCheck, CheckCircle2, XCircle } from "lucide-react";
 import { LessonHeader } from "@/components/LessonHeader";
 import { LabReportModal } from "@/components/LabReportModal";
 import { useSound } from "@/hooks/useSound";
 import confetti from "canvas-confetti";
-
-interface Question {
-  q: string;
-  options: string[];
-  correct: number;
-  explanation: string;
-}
-
-interface LessonQuiz {
-  title: string;
-  questions: Question[];
-}
-
-const QUIZZES: LessonQuiz[] = [
-  {
-    title: "Bài 20: Nhiễm điện",
-    questions: [
-      { q: "Khi cọ xát thước nhựa vào vải len, thước nhựa bị nhiễm điện do:", options: ["Thước nhận thêm proton", "Electron di chuyển từ vải sang thước", "Thước tự sinh ra điện tích", "Vải len bị nóng lên"], correct: 1, explanation: "Khi cọ xát, electron di chuyển từ vải len sang thước nhựa, làm thước nhiễm điện âm." },
-      { q: "Vật bị nhiễm điện có khả năng:", options: ["Phát sáng", "Hút các vật nhẹ", "Tạo ra âm thanh", "Bay lên cao"], correct: 1, explanation: "Vật nhiễm điện có khả năng hút các vật nhẹ như mẩu giấy, sợi bông..." },
-      { q: "Có mấy loại điện tích?", options: ["1 loại", "2 loại", "3 loại", "4 loại"], correct: 1, explanation: "Có 2 loại điện tích: điện tích dương (+) và điện tích âm (-)." },
-    ],
-  },
-  {
-    title: "Bài 21-22: Mạch điện",
-    questions: [
-      { q: "Dòng điện chạy trong mạch khi:", options: ["Mạch hở", "Mạch kín", "Không có nguồn điện", "Công tắc mở"], correct: 1, explanation: "Dòng điện chỉ chạy được trong mạch điện kín." },
-      { q: "Nguồn điện có vai trò:", options: ["Tiêu thụ điện", "Tạo ra và duy trì dòng điện", "Làm đứt mạch", "Đo cường độ"], correct: 1, explanation: "Nguồn điện tạo ra và duy trì dòng điện chạy trong mạch điện kín." },
-      { q: "Công tắc trong mạch điện dùng để:", options: ["Tăng điện áp", "Đóng/ngắt mạch điện", "Đo dòng điện", "Tạo nhiệt"], correct: 1, explanation: "Công tắc dùng để đóng hoặc ngắt mạch điện." },
-    ],
-  },
-  {
-    title: "Bài 23: Tác dụng dòng điện",
-    questions: [
-      { q: "Tác dụng từ của dòng điện thể hiện ở việc:", options: ["Làm nóng dây dẫn", "Làm quay kim la bàn", "Làm sáng đèn", "Phân hủy nước"], correct: 1, explanation: "Dòng điện qua cuộn dây tạo từ trường, có thể làm quay kim la bàn." },
-      { q: "Bếp điện hoạt động dựa trên tác dụng nào?", options: ["Tác dụng từ", "Tác dụng nhiệt", "Tác dụng hóa học", "Tác dụng sinh lý"], correct: 1, explanation: "Bếp điện hoạt động dựa trên tác dụng nhiệt của dòng điện." },
-      { q: "Nam châm điện hoạt động dựa trên:", options: ["Tác dụng nhiệt", "Tác dụng từ của dòng điện", "Tác dụng hóa học", "Tác dụng ánh sáng"], correct: 1, explanation: "Nam châm điện hoạt động dựa trên tác dụng từ." },
-    ],
-  },
-  {
-    title: "Bài 24-25: Đo lường",
-    questions: [
-      { q: "Ampe kế dùng để đo:", options: ["Hiệu điện thế", "Cường độ dòng điện", "Điện trở", "Công suất"], correct: 1, explanation: "Ampe kế đo cường độ dòng điện, đơn vị là Ampe (A)." },
-      { q: "Vôn kế phải được mắc:", options: ["Nối tiếp", "Song song với đoạn mạch cần đo", "Trước nguồn điện", "Sau công tắc"], correct: 1, explanation: "Vôn kế mắc song song với đoạn mạch cần đo hiệu điện thế." },
-      { q: "Nếu mắc Ampe kế song song sẽ gây ra:", options: ["Đo chính xác hơn", "Ngắn mạch", "Tăng hiệu điện thế", "Không có gì"], correct: 1, explanation: "Ampe kế có điện trở rất nhỏ, mắc song song sẽ gây ngắn mạch!" },
-    ],
-  },
-];
+import { useSearchParams } from "react-router-dom";
+import { api, LessonId, LessonQuizPayload, QuizSummary, SubmitQuizResult } from "@/lib/api";
 
 export default function QuizPage() {
-  const [selectedQuiz, setSelectedQuiz] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>([null, null, null]);
-  const [submitted, setSubmitted] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [quizList, setQuizList] = useState<QuizSummary[]>([]);
+  const [selectedLessonId, setSelectedLessonId] = useState<LessonId>("20");
+  const [quizData, setQuizData] = useState<LessonQuizPayload | null>(null);
+  const [answers, setAnswers] = useState<(number | null)[]>([]);
+  const [submitResult, setSubmitResult] = useState<SubmitQuizResult | null>(null);
   const [showReport, setShowReport] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { play } = useSound();
 
-  const quiz = QUIZZES[selectedQuiz];
+  const submitted = submitResult !== null;
+  const score = submitResult?.score ?? 0;
+
+  useEffect(() => {
+    let mounted = true;
+    const loadQuizList = async () => {
+      try {
+        setError(null);
+        const list = await api.getQuizzes();
+        if (!mounted) return;
+        setQuizList(list);
+        if (list.length > 0) {
+          setSelectedLessonId(list[0].lessonId);
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setError(e instanceof Error ? e.message : "Không thể tải danh sách quiz");
+      }
+    };
+    loadQuizList();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadQuiz = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await api.getQuizByLesson(selectedLessonId);
+        if (!mounted) return;
+        setQuizData(data);
+        setAnswers(new Array(data.questions.length).fill(null));
+        setSubmitResult(null);
+        setShowReport(false);
+      } catch (e) {
+        if (!mounted) return;
+        setError(e instanceof Error ? e.message : "Không thể tải câu hỏi");
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    loadQuiz();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedLessonId]);
 
   const handleAnswer = (qIndex: number, optIndex: number) => {
     if (submitted) return;
@@ -69,65 +78,144 @@ export default function QuizPage() {
     play("click");
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
-    const score = quiz.questions.reduce((acc, q, i) => acc + (answers[i] === q.correct ? 1 : 0), 0);
-    if (score === quiz.questions.length) {
-      play("success");
-      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-    } else if (score >= 2) {
-      play("success");
-    } else {
+  const handleSubmit = async () => {
+    if (!quizData) return;
+    if (answers.some((a) => a === null)) return;
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      const result = await api.submitQuiz(selectedLessonId, {
+        answers: answers.map((a) => a ?? 0),
+      });
+      setSubmitResult(result);
+
+      if (result.score === result.total) {
+        play("success");
+        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+      } else if (result.score >= Math.ceil(result.total * 0.6)) {
+        play("success");
+      } else {
+        play("error");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nộp bài thất bại");
       play("error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleReset = () => {
-    setAnswers([null, null, null]);
-    setSubmitted(false);
+    if (!quizData) return;
+    setAnswers(new Array(quizData.questions.length).fill(null));
+    setSubmitResult(null);
     setShowReport(false);
     play("click");
   };
 
-  const score = submitted ? quiz.questions.reduce((acc, q, i) => acc + (answers[i] === q.correct ? 1 : 0), 0) : 0;
+  useEffect(() => {
+    const lesson = searchParams.get("lesson") as LessonId | null;
+    const allowed: LessonId[] = ["20", "21-22", "23", "24-25"];
+    if (lesson && allowed.includes(lesson)) {
+      setSelectedLessonId(lesson);
+    }
+  }, [searchParams]);
 
-  const reportAnswers = quiz.questions.map((q, i) => ({
-    question: q.q,
-    correct: answers[i] === q.correct,
-    userAnswer: answers[i] !== null ? q.options[answers[i]!] : "Chưa trả lời",
-    correctAnswer: q.options[q.correct],
-  }));
+  const resultByQuestionId = useMemo(() => {
+    const map: Record<string, SubmitQuizResult["details"][number]> = {};
+    for (const item of submitResult?.details ?? []) {
+      map[item.questionId] = item;
+    }
+    return map;
+  }, [submitResult]);
+
+  const reportAnswers = (quizData?.questions ?? []).map((q) => {
+    const detail = resultByQuestionId[q.id];
+    const userIndex = detail?.userAnswerIndex ?? null;
+    const correctIndex = detail?.correctAnswerIndex ?? 0;
+    return {
+      question: q.question,
+      correct: detail?.correct ?? false,
+      userAnswer: userIndex !== null ? q.options[userIndex] : "Chưa trả lời",
+      correctAnswer: q.options[correctIndex] ?? "",
+    };
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <LessonHeader icon={ClipboardCheck} title="Kiểm tra kiến thức" subtitle="Đang tải câu hỏi từ máy chủ..." />
+        <div className="glass-panel p-5 text-sm text-muted-foreground">Đang tải dữ liệu quiz...</div>
+      </div>
+    );
+  }
+
+  if (!quizData) {
+    return (
+      <div className="space-y-4">
+        <LessonHeader icon={ClipboardCheck} title="Kiểm tra kiến thức" subtitle="Không thể tải dữ liệu quiz" />
+        <div className="glass-panel p-5 text-sm text-destructive">
+          {error ?? "Không có dữ liệu quiz. Hãy kiểm tra backend và thử lại."}
+        </div>
+      </div>
+    );
+  }
+
+  const lessonTitle = quizList.find((q) => q.lessonId === selectedLessonId)?.lessonTitle ?? quizData.lessonTitle;
+
+  const accuracy = Math.round((score / quizData.questions.length) * 100);
+  const scoreMessage =
+    score === quizData.questions.length ? "🎉 Xuất sắc!" : accuracy >= 60 ? "👍 Tốt!" : "📚 Cần ôn lại";
+
+  const handleQuickSelect = (lessonId: LessonId) => {
+    setSelectedLessonId(lessonId);
+    play("click");
+  };
 
   return (
     <div className="space-y-4">
       <LessonHeader icon={ClipboardCheck} title="Kiểm tra kiến thức" subtitle="Chọn bài và trả lời câu hỏi" />
 
+      <div className="glass-panel p-4">
+        <p className="text-sm text-muted-foreground">
+          Gợi ý: sau khi hoàn thành mô phỏng ở từng bài, chọn đúng bộ câu hỏi tương ứng để tự đánh giá.
+        </p>
+      </div>
+
       <div className="flex gap-2 flex-wrap">
-        {QUIZZES.map((q, i) => (
+        {quizList.map((q) => (
           <button
-            key={i}
-            onClick={() => { setSelectedQuiz(i); handleReset(); }}
+            key={q.lessonId}
+            onClick={() => handleQuickSelect(q.lessonId)}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-              selectedQuiz === i
+              selectedLessonId === q.lessonId
                 ? "bg-primary/20 text-primary border border-primary/30"
                 : "bg-secondary/50 text-muted-foreground border border-border/30 hover:bg-secondary"
             }`}
           >
-            {q.title}
+            {q.lessonTitle}
           </button>
         ))}
       </div>
 
+      {error && (
+        <div className="glass-panel p-4 text-sm text-destructive">
+          Lỗi: {error}
+        </div>
+      )}
+
       <div className="space-y-4">
-        {quiz.questions.map((q, qi) => (
-          <div key={qi} className="glass-panel p-5">
+        {quizData.questions.map((q, qi) => (
+          <div key={q.id} className="glass-panel p-5">
             <p className="text-sm font-semibold text-foreground mb-3">
-              Câu {qi + 1}: {q.q}
+              Câu {qi + 1}: {q.question}
             </p>
             <div className="space-y-2">
               {q.options.map((opt, oi) => {
+                const detail = resultByQuestionId[q.id];
                 const selected = answers[qi] === oi;
-                const isCorrect = q.correct === oi;
+                const isCorrect = detail?.correctAnswerIndex === oi;
                 let borderColor = "border-border/30";
                 let bgColor = "bg-secondary/30";
                 if (submitted) {
@@ -152,8 +240,8 @@ export default function QuizPage() {
                         {String.fromCharCode(65 + oi)}. {opt}
                       </span>
                     </div>
-                    {submitted && isCorrect && (
-                      <p className="text-xs text-muted-foreground mt-2 ml-6">💡 {q.explanation}</p>
+                    {submitted && isCorrect && detail?.explanation && (
+                      <p className="text-xs text-muted-foreground mt-2 ml-6">💡 {detail.explanation}</p>
                     )}
                   </button>
                 );
@@ -167,15 +255,15 @@ export default function QuizPage() {
         {!submitted ? (
           <button
             onClick={handleSubmit}
-            disabled={answers.some(a => a === null)}
+            disabled={answers.some(a => a === null) || isSubmitting}
             className="px-6 py-2.5 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97]"
           >
-            Nộp bài
+            {isSubmitting ? "Đang nộp..." : "Nộp bài"}
           </button>
         ) : (
           <>
-            <div className={`px-4 py-2.5 rounded-lg text-sm font-bold ${score === 3 ? "bg-success/20 text-success" : "bg-accent/20 text-accent"}`}>
-              Kết quả: {score}/{quiz.questions.length} {score === 3 ? "🎉 Xuất sắc!" : score >= 2 ? "👍 Tốt!" : "📚 Cần ôn lại"}
+            <div className={`px-4 py-2.5 rounded-lg text-sm font-bold ${accuracy >= 80 ? "bg-success/20 text-success" : "bg-accent/20 text-accent"}`}>
+              Kết quả: {score}/{quizData.questions.length} {scoreMessage}
             </div>
             <button
               onClick={() => setShowReport(true)}
@@ -196,9 +284,9 @@ export default function QuizPage() {
       <LabReportModal
         open={showReport}
         onClose={() => setShowReport(false)}
-        lessonTitle={quiz.title}
+        lessonTitle={lessonTitle}
         score={score}
-        total={quiz.questions.length}
+        total={quizData.questions.length}
         answers={reportAnswers}
       />
     </div>

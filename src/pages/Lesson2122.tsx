@@ -4,6 +4,8 @@ import { LessonHeader } from "@/components/LessonHeader";
 import { ControlPanel } from "@/components/ControlPanel";
 import { LessonMedia } from "@/components/LessonMedia";
 import { useSound } from "@/hooks/useSound";
+import { useLessonShortcuts } from "@/hooks/useLessonShortcuts";
+import { LessonWrapUp } from "@/components/LessonWrapUp";
 
 interface Component {
   id: string;
@@ -38,6 +40,7 @@ export default function Lesson2122() {
   const animRef = useRef<number>(0);
   const particlePhase = useRef(0);
   const { play } = useSound();
+  const openHelp = () => window.dispatchEvent(new Event("open-help-dialog"));
 
   const checkCircuit = useCallback((comps: Component[]) => {
     const hasBattery = comps.some(c => c.type === "battery");
@@ -284,6 +287,24 @@ export default function Lesson2122() {
     ]);
   };
 
+  useLessonShortcuts({
+    isRunning,
+    onToggleRun: () => {
+      setIsRunning((v) => !v);
+      play("switch");
+    },
+    onReset: () => {
+      reset();
+      play("click");
+    },
+    showParticles,
+    onToggleParticles: () => {
+      setShowParticles((v) => !v);
+      play("click");
+    },
+    onOpenHelp: openHelp,
+  });
+
   return (
     <div className="space-y-4">
       <LessonHeader icon={CircuitBoard} title="Bài 21-22: Mạch điện" subtitle="Xây dựng và kiểm tra mạch điện">
@@ -293,6 +314,7 @@ export default function Lesson2122() {
           onReset={() => { reset(); play("click"); }}
           showParticles={showParticles}
           onToggleParticles={() => { setShowParticles(!showParticles); play("click"); }}
+          onOpenHelp={openHelp}
         />
       </LessonHeader>
 
@@ -310,6 +332,8 @@ export default function Lesson2122() {
             height={420}
             className="w-full rounded-lg cursor-grab active:cursor-grabbing"
             style={{ maxHeight: "420px", background: "#0f1420" }}
+            role="img"
+            aria-label="Mô phỏng lắp mạch điện đơn giản với pin, công tắc, bóng đèn và ampe kế"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={() => setDragId(null)}
@@ -358,6 +382,15 @@ export default function Lesson2122() {
           </div>
         </div>
       </div>
+      <LessonWrapUp
+        lessonTitle="Bài 21-22: Dòng điện, nguồn điện và mạch điện đơn giản"
+        quizLesson="21-22"
+        points={[
+          "Dòng điện chỉ chạy khi mạch kín và có nguồn điện.",
+          "Công tắc dùng để đóng hoặc ngắt mạch.",
+          "Mạch hở thì đèn tắt và dòng điện bằng 0.",
+        ]}
+      />
     </div>
   );
 }

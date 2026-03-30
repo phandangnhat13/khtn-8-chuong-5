@@ -5,6 +5,8 @@ import { ControlPanel } from "@/components/ControlPanel";
 import { LessonMedia } from "@/components/LessonMedia";
 import { useSound } from "@/hooks/useSound";
 import { Slider } from "@/components/ui/slider";
+import { useLessonShortcuts } from "@/hooks/useLessonShortcuts";
+import { LessonWrapUp } from "@/components/LessonWrapUp";
 
 export default function Lesson23() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -15,12 +17,28 @@ export default function Lesson23() {
   const animRef = useRef<number>(0);
   const timeRef = useRef(0);
   const { play } = useSound();
+  const openHelp = () => window.dispatchEvent(new Event("open-help-dialog"));
 
   const reset = () => {
     setIsRunning(false);
     timeRef.current = 0;
     play("click");
   };
+
+  useLessonShortcuts({
+    isRunning,
+    onToggleRun: () => {
+      setIsRunning((v) => !v);
+      play("switch");
+    },
+    onReset: reset,
+    showParticles,
+    onToggleParticles: () => {
+      setShowParticles((v) => !v);
+      play("click");
+    },
+    onOpenHelp: openHelp,
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -283,6 +301,7 @@ export default function Lesson23() {
           onReset={reset}
           showParticles={showParticles}
           onToggleParticles={() => { setShowParticles(!showParticles); play("click"); }}
+          onOpenHelp={openHelp}
         />
       </LessonHeader>
 
@@ -315,6 +334,8 @@ Bạn có thể chuyển đổi giữa chế độ từ trường và nhiệt đ
           height={400}
           className="w-full rounded-lg"
           style={{ maxHeight: "400px", background: "#0f1420" }}
+          role="img"
+          aria-label="Mô phỏng tác dụng từ và tác dụng nhiệt của dòng điện"
         />
       </div>
 
@@ -338,6 +359,15 @@ Bạn có thể chuyển đổi giữa chế độ từ trường và nhiệt đ
           <span className="text-[10px] text-muted-foreground/50">9V</span>
         </div>
       </div>
+      <LessonWrapUp
+        lessonTitle="Bài 23: Tác dụng của dòng điện"
+        quizLesson="23"
+        points={[
+          "Dòng điện có thể tạo từ trường làm lệch kim nam châm.",
+          "Dòng điện cũng gây tỏa nhiệt trên dây dẫn có điện trở.",
+          "Điện áp tăng làm hiệu ứng từ và nhiệt rõ hơn.",
+        ]}
+      />
     </div>
   );
 }
