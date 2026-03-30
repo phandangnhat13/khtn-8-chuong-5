@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Gauge } from "lucide-react";
 import { LessonHeader } from "@/components/LessonHeader";
 import { ControlPanel } from "@/components/ControlPanel";
+import { LessonMedia } from "@/components/LessonMedia";
 import { useSound } from "@/hooks/useSound";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
@@ -255,6 +256,13 @@ export default function Lesson2425() {
           onToggleParticles={() => { setShowParticles(!showParticles); play("click"); }}
         />
       </LessonHeader>
+
+      <LessonMedia
+        title="Cường độ và hiệu điện thế"
+        summary="Bài học giới thiệu cách mắc ampe kế nối tiếp và vôn kế song song để đo cường độ và hiệu điện thế đúng.
+Bạn có thể thay đổi điện áp và thử nghiệm kết nối khác nhau." 
+        audioText="Hãy quan sát cách mắc ampe kế và vôn kế. Ampe kế phải nối tiếp để đo đúng cường độ, còn vôn kế phải song song với đoạn mạch để đo hiệu điện thế." 
+      />
 
       <div className="glass-panel p-4">
         <canvas
