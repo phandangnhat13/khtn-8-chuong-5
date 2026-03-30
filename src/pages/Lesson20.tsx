@@ -5,6 +5,8 @@ import { ControlPanel } from "@/components/ControlPanel";
 import { LessonMedia } from "@/components/LessonMedia";
 import { useSound } from "@/hooks/useSound";
 import { Slider } from "@/components/ui/slider";
+import { useLessonShortcuts } from "@/hooks/useLessonShortcuts";
+import { LessonWrapUp } from "@/components/LessonWrapUp";
 
 interface Scrap {
   x: number;
@@ -30,6 +32,7 @@ export default function Lesson20() {
   const lastMouseX = useRef(0);
   const lastSparkTime = useRef(0);
   const { play } = useSound();
+  const openHelp = () => window.dispatchEvent(new Event("open-help-dialog"));
 
   const initScraps = useCallback(() => {
     const scraps: Scrap[] = [];
@@ -56,6 +59,21 @@ export default function Lesson20() {
     initScraps();
     play("click");
   };
+
+  useLessonShortcuts({
+    isRunning,
+    onToggleRun: () => {
+      setIsRunning((v) => !v);
+      play("click");
+    },
+    onReset: reset,
+    showParticles,
+    onToggleParticles: () => {
+      setShowParticles((v) => !v);
+      play("click");
+    },
+    onOpenHelp: openHelp,
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -255,6 +273,7 @@ export default function Lesson20() {
           onReset={reset}
           showParticles={showParticles}
           onToggleParticles={() => { setShowParticles(!showParticles); play("click"); }}
+          onOpenHelp={openHelp}
         />
       </LessonHeader>
 
@@ -272,6 +291,8 @@ Các học sinh có thể tương tác để thấy lực hút mạnh lên khi �
           height={400}
           className="w-full rounded-lg cursor-grab active:cursor-grabbing"
           style={{ maxHeight: "400px", background: "#0f1420" }}
+          role="img"
+          aria-label="Mô phỏng nhiễm điện do cọ xát với thước nhựa và mẩu giấy"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={() => setIsDragging(false)}
@@ -308,6 +329,15 @@ Các học sinh có thể tương tác để thấy lực hút mạnh lên khi �
           <p className="text-2xl font-bold font-mono text-success">{scrapsRef.current.filter(s => s.attached).length}/12</p>
         </div>
       </div>
+      <LessonWrapUp
+        lessonTitle="Bài 20: Nhiễm điện do cọ xát"
+        quizLesson="20"
+        points={[
+          "Cọ xát làm electron dịch chuyển và tạo điện tích trên vật.",
+          "Điện tích càng lớn thì lực hút tĩnh điện lên vật nhẹ càng mạnh.",
+          "Môi trường ẩm làm điện tích tiêu tán nhanh hơn.",
+        ]}
+      />
     </div>
   );
 }

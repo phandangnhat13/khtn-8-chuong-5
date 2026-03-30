@@ -6,6 +6,8 @@ import { LessonMedia } from "@/components/LessonMedia";
 import { useSound } from "@/hooks/useSound";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
+import { useLessonShortcuts } from "@/hooks/useLessonShortcuts";
+import { LessonWrapUp } from "@/components/LessonWrapUp";
 
 type Connection = "series" | "parallel" | "none";
 
@@ -20,6 +22,7 @@ export default function Lesson2425() {
   const animRef = useRef<number>(0);
   const timeRef = useRef(0);
   const { play } = useSound();
+  const openHelp = () => window.dispatchEvent(new Event("open-help-dialog"));
 
   const reset = () => {
     setIsRunning(false);
@@ -30,6 +33,22 @@ export default function Lesson2425() {
     timeRef.current = 0;
     play("click");
   };
+
+  useLessonShortcuts({
+    isRunning,
+    onToggleRun: () => {
+      setIsRunning((v) => !v);
+      setWarned(false);
+      play("switch");
+    },
+    onReset: reset,
+    showParticles,
+    onToggleParticles: () => {
+      setShowParticles((v) => !v);
+      play("click");
+    },
+    onOpenHelp: openHelp,
+  });
 
   useEffect(() => {
     if (isRunning && ammeterConn === "parallel" && !warned) {
@@ -254,6 +273,7 @@ export default function Lesson2425() {
           onReset={reset}
           showParticles={showParticles}
           onToggleParticles={() => { setShowParticles(!showParticles); play("click"); }}
+          onOpenHelp={openHelp}
         />
       </LessonHeader>
 
@@ -271,6 +291,8 @@ Bạn có thể thay đổi điện áp và thử nghiệm kết nối khác nha
           height={400}
           className="w-full rounded-lg"
           style={{ maxHeight: "400px", background: "#0f1420" }}
+          role="img"
+          aria-label="Mô phỏng đo cường độ dòng điện và hiệu điện thế bằng ampe kế và vôn kế"
         />
       </div>
 
@@ -330,6 +352,15 @@ Bạn có thể thay đổi điện áp và thử nghiệm kết nối khác nha
           </p>
         </div>
       </div>
+      <LessonWrapUp
+        lessonTitle="Bài 24-25: Cường độ dòng điện và hiệu điện thế"
+        quizLesson="24-25"
+        points={[
+          "Ampe kế mắc nối tiếp để đo cường độ dòng điện I.",
+          "Vôn kế mắc song song để đo hiệu điện thế U.",
+          "Mắc sai ampe kế song song có thể gây ngắn mạch nguy hiểm.",
+        ]}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { RotateCcw, Play, Pause, Sparkles } from "lucide-react";
+import { RotateCcw, Play, Pause, Sparkles, CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ControlPanelProps {
@@ -7,9 +7,17 @@ interface ControlPanelProps {
   onReset: () => void;
   showParticles: boolean;
   onToggleParticles: () => void;
+  onOpenHelp?: () => void;
 }
 
-export function ControlPanel({ isRunning, onToggleRun, onReset, showParticles, onToggleParticles }: ControlPanelProps) {
+export function ControlPanel({
+  isRunning,
+  onToggleRun,
+  onReset,
+  showParticles,
+  onToggleParticles,
+  onOpenHelp,
+}: ControlPanelProps) {
   return (
     <div className="flex gap-2 flex-wrap">
       <Button
@@ -37,6 +45,15 @@ export function ControlPanel({ isRunning, onToggleRun, onReset, showParticles, o
       >
         <Sparkles className="w-4 h-4" />
         Dòng electron
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onOpenHelp}
+        className="gap-2 border-border/50 bg-card/50 hover:bg-secondary text-muted-foreground hover:text-foreground"
+      >
+        <CircleHelp className="w-4 h-4" />
+        Trợ giúp
       </Button>
     </div>
   );
