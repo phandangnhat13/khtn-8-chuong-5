@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CircuitBoard } from "lucide-react";
+import { CircuitBoard, MousePointer2, HelpCircle, Zap, BookOpen } from "lucide-react";
 import { LessonHeader } from "@/components/LessonHeader";
 import { ControlPanel } from "@/components/ControlPanel";
 import { useSound } from "@/hooks/useSound";
+import { LessonMedia } from "@/components/LessonMedia";
+import { LessonWrapUp } from "@/components/LessonWrapUp";
 
 type CompType = "battery" | "switch" | "bulb" | "ammeter";
 
@@ -298,6 +300,7 @@ export default function Lesson2122() {
   const [statusBulb,    setStatusBulb]    = useState(false);
 
   const { play } = useSound();
+  const openHelp = () => window.dispatchEvent(new Event("open-help-dialog"));
 
   useEffect(() => { stateRef.current.isRunning     = isRunning;     }, [isRunning]);
   useEffect(() => { stateRef.current.showParticles = showParticles; }, [showParticles]);
@@ -507,11 +510,11 @@ export default function Lesson2122() {
   }, [play]);
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <LessonHeader
         icon={CircuitBoard}
         title="Bài 21-22: Mạch điện"
-        subtitle="Xây dựng và kiểm tra mạch điện"
+        subtitle="Khoa học tự nhiên 8 - Chủ đề: Điện"
       >
         <ControlPanel
           isRunning={isRunning}
@@ -529,12 +532,44 @@ export default function Lesson2122() {
             stateRef.current.showParticles = next;
             play("click");
           }}
+          onOpenHelp={openHelp}
         />
       </LessonHeader>
 
+      <LessonMedia
+        title="Thiết kế và lắp ráp mạch điện"
+        summary="Mạch điện kín được tạo ra khi có nguồn điện, dây dẫn và các thiết bị tiêu thụ điện được kết nối liên tục với nhau. Mũi tên (hạt vàng) biểu diễn chiều dòng điện chạy từ cực dương (+) qua cực âm (-) của nguồn điện." 
+        audioText="Hãy thử nối các chốt của linh kiện để tạo thành một vòng khép kín. Sau đó, nhấn chạy mô phỏng và đóng công tắc. Nếu đèn sáng, bạn đã ráp đúng một mạch điện kín." 
+      />
+
+      {/* Guide Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="glass-panel p-3 flex items-start gap-3 bg-blue-500/5">
+          <MousePointer2 className="w-5 h-5 text-blue-400 mt-1 shrink-0" />
+          <div>
+            <h4 className="text-sm font-bold text-blue-100">B1: Ráp mạch</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">Kéo thả linh kiện từ cột bên phải. Nối các chốt tròn với nhau bằng dây điện.</p>
+          </div>
+        </div>
+        <div className="glass-panel p-3 flex items-start gap-3 bg-amber-500/5">
+          <Zap className="w-5 h-5 text-amber-400 mt-1 shrink-0" />
+          <div>
+            <h4 className="text-sm font-bold text-amber-100">B2: Cấp điện</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">Bấm nút "Chạy mô phỏng" (Play) trên thanh công cụ để bắt đầu thử nghiệm mạch.</p>
+          </div>
+        </div>
+        <div className="glass-panel p-3 flex items-start gap-3 bg-emerald-500/5">
+          <CircuitBoard className="w-5 h-5 text-emerald-400 mt-1 shrink-0" />
+          <div>
+            <h4 className="text-sm font-bold text-emerald-100">B3: Thử nghiệm</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">Đóng/mở công tắc để xem dòng điện chạy và kiểm tra xem bóng đèn có sáng không.</p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 glass-panel p-4 space-y-2">
-          <div className="flex items-center gap-2">
+        <div className="lg:col-span-3 glass-panel p-4 space-y-2 relative">
+          <div className="flex items-center gap-2 mb-2">
             <button
               onClick={() => {
                 const next = !deleteMode;
@@ -542,31 +577,32 @@ export default function Lesson2122() {
                 stateRef.current.deleteMode = next;
                 play("click");
               }}
-              className={`text-xs px-3 py-1 rounded-lg border transition-colors ${
+              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-1 ${
                 deleteMode
                   ? "bg-destructive/20 border-destructive text-destructive"
                   : "bg-secondary/40 border-border/30 text-muted-foreground hover:bg-secondary/70"
               }`}
             >
-              {deleteMode ? "✂️ Xóa dây: BẬT" : "✂️ Xóa dây"}
+              ✂️ {deleteMode ? "Đang xóa dây (Bấm lại để tắt)" : "Chế độ xóa dây"}
             </button>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground ml-2">
               {deleteMode
-                ? "Nhấp vào dây để xóa"
-                : "Kéo chốt ○ để nối • Kéo linh kiện để di chuyển"}
+                ? "Click vào dây muốn xóa"
+                : "Kéo thả từ cột phải hoặc click chuột phải để xóa linh kiện"}
             </span>
           </div>
 
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
+            className="border border-white/5 rounded-lg overflow-hidden bg-slate-900/50"
           >
             <canvas
               ref={canvasRef}
               width={W}
               height={H}
-              className="w-full rounded-lg"
-              style={{ maxHeight: `${H}px`, background: "#0f1420" }}
+              className="w-full"
+              style={{ maxHeight: `${H}px`, background: "#0a0f1a" }}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -574,13 +610,56 @@ export default function Lesson2122() {
               onContextMenu={handleContextMenu}
             />
           </div>
+
+          <div className="mt-4 pt-4 border-t border-white/5">
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpen className="w-5 h-5 text-primary" />
+              <h3 className="font-bold text-sm">Góc kiến thức</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                <p className="font-semibold text-primary mb-1 text-xs uppercase">Mạch kín là gì?</p>
+                <p className="text-muted-foreground text-xs leading-relaxed">Là mạch có các bộ phận dẫn điện được nối liền với nhau tạo thành một vòng khép kín. Lúc này dòng điện mới có thể chạy qua.</p>
+              </div>
+              <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <p className="font-semibold text-amber-500 mb-1 text-xs uppercase">Chiều dòng điện</p>
+                <p className="text-muted-foreground text-xs leading-relaxed">Theo quy ước, chiều dòng điện là chiều từ cực dương (+), qua dây dẫn và thiết bị điện tới cực âm (-) của nguồn điện.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
+          <div className="glass-panel p-4 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+            <h3 className="text-sm font-bold text-primary mb-3 uppercase tracking-wider flex items-center gap-2">
+              <Zap className="w-4 h-4" /> Bảng đo liệu
+            </h3>
+            <div className="space-y-3 text-sm bg-slate-950/50 p-3 rounded-lg border border-white/5">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs">Trạng thái mạch:</span>
+                <span className={`px-2 py-0.5 rounded text-xs font-bold ${statusCircuit ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
+                  {statusCircuit ? "KÍN KẾT NỐI" : "HỞ (CHƯA NỐI)"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs">Dòng điện (I):</span>
+                <span className="text-lg font-mono font-bold text-blue-400">{statusCurrent}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs">Bóng đèn:</span>
+                <span className={`text-sm font-bold ${statusBulb ? "text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]" : "text-slate-500"}`}>
+                  {statusBulb ? "SÁNG 💡" : "TẮT"}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div className="glass-panel p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3">🔧 Linh kiện</h3>
-            <p className="text-xs text-muted-foreground mb-2">Kéo thả vào bảng mạch</p>
-            <div className="space-y-2">
+            <h3 className="text-sm font-bold text-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
+              <CircuitBoard className="w-4 h-4" /> Hộp linh kiện
+            </h3>
+            <p className="text-[10px] text-muted-foreground mb-3 uppercase tracking-wider">Kéo thả vào bảng mạch bên trái</p>
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
               {COMPONENTS_PALETTE.map((c, i) => (
                 <div
                   key={i}
@@ -590,55 +669,32 @@ export default function Lesson2122() {
                     e.dataTransfer.setData("compLabel",   c.label);
                     e.dataTransfer.setData("compVoltage", String(c.voltage ?? ""));
                   }}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50 border border-border/30 text-sm text-muted-foreground cursor-grab active:cursor-grabbing select-none hover:bg-secondary/80 transition-colors"
+                  className="flex items-center gap-3 p-2.5 rounded-lg bg-secondary/30 border border-white/10 text-sm text-foreground cursor-grab active:cursor-grabbing select-none hover:bg-secondary/70 hover:border-primary/50 transition-all shadow-sm"
                 >
-                  <span className="text-lg">
+                  <span className="text-xl bg-slate-900 p-1.5 rounded-md">
                     {c.type === "battery" ? "🔋"
                       : c.type === "switch"  ? "🔌"
                       : c.type === "bulb"    ? "💡"
                       : "📊"}
                   </span>
-                  {c.label}
+                  <span className="font-medium text-xs">{c.label}</span>
                 </div>
               ))}
             </div>
           </div>
-
-          <div className="glass-panel p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-2">📊 Trạng thái</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Mạch:</span>
-                <span className={statusCircuit ? "text-success font-medium" : "text-destructive font-medium"}>
-                  {statusCircuit ? "Kín ✓" : "Hở ✗"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Dòng điện:</span>
-                <span className="text-primary font-mono">{statusCurrent}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Đèn:</span>
-                <span className={statusBulb ? "text-accent" : "text-muted-foreground"}>
-                  {statusBulb ? "Sáng 💡" : "Tắt"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-panel p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-2">📖 Hướng dẫn</h3>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              <li>⭕ Kéo chốt để nối dây</li>
-              <li>🖱️ Kéo linh kiện để di chuyển</li>
-              <li>🔌 Nhấp công tắc để đóng/mở</li>
-              <li>✂️ Bật Xóa dây → nhấp dây</li>
-              <li>🗑️ Chuột phải để xóa linh kiện</li>
-              <li>🔋 Kéo từ bảng trái để thêm</li>
-            </ul>
-          </div>
         </div>
       </div>
+
+      <LessonWrapUp
+        lessonTitle="Bài 21-22: Mạch điện"
+        quizLesson="21-22"
+        points={[
+          "Mạch điện đơn giản gồm: nguồn điện, dây dẫn, công tắc và thiết bị tiêu thụ điện.",
+          "Dòng điện chỉ chạy trong mạch điện kín.",
+          "Theo quy ước: Chiều dòng điện đi từ cực dương qua dây dẫn tới cực âm của nguồn.",
+          "Ampe kế dùng để đo cường độ dòng điện (I) trong mạch."
+        ]}
+      />
     </div>
   );
 }

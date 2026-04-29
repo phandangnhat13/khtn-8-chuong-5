@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Gauge } from "lucide-react";
+import { Gauge, Zap, AlertTriangle, BookOpen, Activity } from "lucide-react";
 import { LessonHeader } from "@/components/LessonHeader";
 import { ControlPanel } from "@/components/ControlPanel";
 import { LessonMedia } from "@/components/LessonMedia";
@@ -18,7 +18,7 @@ export default function Lesson2425() {
   const [ammeterConn, setAmmeterConn] = useState<Connection>("series");
   const [voltmeterConn, setVoltmeterConn] = useState<Connection>("parallel");
   const [warned, setWarned] = useState(false);
-  const [batteryVoltage, setBatteryVoltage] = useState([3]);
+  const [batteryVoltage, setBatteryVoltage] = useState([6]);
   const animRef = useRef<number>(0);
   const timeRef = useRef(0);
   const { play } = useSound();
@@ -29,7 +29,7 @@ export default function Lesson2425() {
     setAmmeterConn("series");
     setVoltmeterConn("parallel");
     setWarned(false);
-    setBatteryVoltage([3]);
+    setBatteryVoltage([6]);
     timeRef.current = 0;
     play("click");
   };
@@ -53,18 +53,31 @@ export default function Lesson2425() {
   useEffect(() => {
     if (isRunning && ammeterConn === "parallel" && !warned) {
       play("error");
-      toast.error("⚠️ Cảnh báo: Ngắn mạch!", {
-        description: "Ampe kế mắc song song sẽ gây ngắn mạch! Hãy mắc Ampe kế nối tiếp.",
+      toast.error("⚠️ CẢNH BÁO: NGẮN MẠCH!", {
+        description: "Ampe kế có điện trở rất nhỏ. Nếu mắc song song với bóng đèn sẽ gây hiện tượng đoản mạch (ngắn mạch), làm hỏng thiết bị!",
         duration: 5000,
       });
       setWarned(true);
     }
   }, [isRunning, ammeterConn, warned, play]);
 
+  // Physics Logic
   const bv = batteryVoltage[0];
-  const circuitOk = isRunning && ammeterConn !== "parallel";
-  const currentVal = circuitOk && ammeterConn === "series" ? +(bv / 6).toFixed(2) : 0;
-  const voltVal = circuitOk && voltmeterConn === "parallel" ? bv : 0;
+  const R_bulb = 12; // Resistance of bulb (Ohms)
+  
+  // Calculate circuit state
+  const isShortCircuit = ammeterConn === "parallel";
+  const circuitOk = isRunning && !isShortCircuit;
+  
+  // I = U / R. If short circuit, current goes to max (danger)
+  const currentVal = isRunning 
+    ? (isShortCircuit ? 9.99 : +(bv / R_bulb).toFixed(2)) 
+    : 0;
+    
+  // Voltage drop across the bulb. If short circuit, voltage across bulb is ~0
+  const voltVal = isRunning && voltmeterConn === "parallel" 
+    ? (isShortCircuit ? 0 : bv) 
+    : 0;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -72,52 +85,74 @@ export default function Lesson2425() {
     const ctx = canvas.getContext("2d")!;
     const W = canvas.width, H = canvas.height;
 
-    const drawMeter = (x: number, y: number, label: string, value: string, unit: string, needleAngle: number, color: string) => {
-      ctx.fillStyle = "#1e293b";
+    const drawMeter = (x: number, y: number, label: string, value: string, unit: string, needleAngle: number, color: string, maxVal: number) => {
+      // Meter housing
+      ctx.fillStyle = "#0f172a";
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(x, y, 45, 0, Math.PI * 2);
+      ctx.roundRect(x - 55, y - 55, 110, 110, 12);
       ctx.fill();
       ctx.stroke();
 
-      ctx.strokeStyle = "#374151";
-      ctx.lineWidth = 1;
+      // Screen background
+      ctx.fillStyle = "#1e293b";
       ctx.beginPath();
-      ctx.arc(x, y, 35, Math.PI * 1.25, Math.PI * 1.75);
+      ctx.roundRect(x - 45, y - 45, 90, 60, 6);
+      ctx.fill();
+
+      // Scale arc
+      ctx.strokeStyle = "#475569";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y + 5, 35, Math.PI * 1.15, Math.PI * 1.85);
       ctx.stroke();
 
+      // Tick marks
       for (let i = 0; i <= 10; i++) {
-        const a = Math.PI * 1.25 + (i / 10) * Math.PI * 0.5;
-        const inner = 30, outer = 35;
-        ctx.strokeStyle = "#4b5563";
+        const a = Math.PI * 1.15 + (i / 10) * Math.PI * 0.7;
+        const inner = i % 5 === 0 ? 28 : 31;
+        const outer = 35;
+        ctx.strokeStyle = i % 5 === 0 ? "#94a3b8" : "#4b5563";
         ctx.lineWidth = i % 5 === 0 ? 2 : 1;
         ctx.beginPath();
-        ctx.moveTo(x + Math.cos(a) * inner, y + Math.sin(a) * inner);
-        ctx.lineTo(x + Math.cos(a) * outer, y + Math.sin(a) * outer);
+        ctx.moveTo(x + Math.cos(a) * inner, y + 5 + Math.sin(a) * inner);
+        ctx.lineTo(x + Math.cos(a) * outer, y + 5 + Math.sin(a) * outer);
         ctx.stroke();
       }
 
-      const needleA = Math.PI * 1.25 + needleAngle * Math.PI * 0.5;
+      // Needle (Adding wobble for realism)
+      const wobble = isRunning ? Math.sin(timeRef.current * 20) * 0.02 : 0;
+      const normalizedVal = Math.min(parseFloat(value) / maxVal, 1.1); // Cap needle at 110%
+      const needleA = Math.PI * 1.15 + normalizedVal * Math.PI * 0.7 + wobble;
+      
       ctx.strokeStyle = "#ef4444";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + Math.cos(needleA) * 30, y + Math.sin(needleA) * 30);
+      ctx.moveTo(x, y + 5);
+      ctx.lineTo(x + Math.cos(needleA) * 38, y + 5 + Math.sin(needleA) * 38);
       ctx.stroke();
 
-      ctx.fillStyle = "#6b7280";
+      // Pin
+      ctx.fillStyle = "#fbbf24";
       ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.arc(x, y + 5, 4, 0, Math.PI * 2);
       ctx.fill();
 
+      // Labels
       ctx.fillStyle = "#e2e8f0";
-      ctx.font = "bold 16px 'Space Grotesk'";
+      ctx.font = "bold 14px 'Space Grotesk'";
       ctx.textAlign = "center";
-      ctx.fillText(label, x, y - 10);
+      ctx.fillText(label, x, y - 25);
+      
+      // Digital readout
+      ctx.fillStyle = "#0f172a";
+      ctx.beginPath();
+      ctx.roundRect(x - 30, y + 20, 60, 24, 4);
+      ctx.fill();
       ctx.fillStyle = color;
       ctx.font = "bold 14px 'JetBrains Mono'";
-      ctx.fillText(value + unit, x, y + 20);
+      ctx.fillText(value + unit, x, y + 37);
     };
 
     const draw = () => {
@@ -125,148 +160,206 @@ export default function Lesson2425() {
       if (isRunning) timeRef.current += 0.016;
       const t = timeRef.current;
 
-      ctx.fillStyle = "#0f1420";
+      ctx.fillStyle = "#0a0f1a";
       ctx.fillRect(0, 0, W, H);
 
-      // Battery
-      const bx = 150, by = 200;
-      ctx.fillStyle = "#374151";
-      ctx.beginPath();
-      ctx.roundRect(bx - 30, by - 20, 60, 40, 6);
-      ctx.fill();
-      ctx.fillStyle = "#ef4444";
-      ctx.fillRect(bx + 24, by - 10, 10, 20);
-      ctx.fillStyle = "#3b82f6";
-      ctx.fillRect(bx - 34, by - 8, 8, 16);
-      ctx.fillStyle = "#e2e8f0";
-      ctx.font = "10px 'Space Grotesk'";
-      ctx.textAlign = "center";
-      ctx.fillText(`${bv}V`, bx, by + 4);
-
-      // Bulb
-      const lx = 350, ly = 200;
-      const brightness = circuitOk ? Math.min(bv / 6, 1) : 0;
-      if (circuitOk) {
-        ctx.shadowColor = "#fbbf24";
-        ctx.shadowBlur = 15 + brightness * 20;
-        ctx.fillStyle = `rgba(251,191,36,${0.5 + brightness * 0.5})`;
-      } else {
-        ctx.fillStyle = "#374151";
+      // Warning flash (Short circuit)
+      if (isRunning && ammeterConn === "parallel") {
+        const flash = Math.sin(t * 15) > 0;
+        if (flash) {
+          ctx.fillStyle = "rgba(239, 68, 68, 0.1)";
+          ctx.fillRect(0, 0, W, H);
+        }
       }
-      ctx.beginPath();
-      ctx.arc(lx, ly - 8, 20, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "#6b7280";
-      ctx.fillRect(lx - 12, ly + 12, 24, 12);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "10px 'Space Grotesk'";
-      ctx.fillText("Đèn", lx, ly + 38);
 
-      // Wires
-      ctx.strokeStyle = circuitOk ? "#3b82f6" : "#374151";
-      ctx.lineWidth = 2.5;
+      // --- WIRING AND COMPONENTS ---
+      const bx = 120, by = 220; // Battery pos
+      const lx = 400, ly = 220; // Lamp pos
+      const amX = ammeterConn === "series" ? 260 : 400; // Ammeter pos
+      const amY = ammeterConn === "series" ? 320 : 100;
+      const vmX = 580, vmY = 220; // Voltmeter pos
+
+      // Main circuit wires
+      ctx.strokeStyle = circuitOk || isRunning ? (isShortCircuit ? "#ef4444" : "#3b82f6") : "#334155";
+      ctx.lineWidth = isShortCircuit ? 4 : 3;
+      ctx.lineJoin = "round";
+      
+      // Positive path (Battery -> Lamp)
       ctx.beginPath();
-      ctx.moveTo(bx + 34, by);
+      ctx.moveTo(bx + 40, by);
       ctx.lineTo(lx - 25, by);
       ctx.stroke();
+
+      // Negative path (Lamp -> Ammeter -> Battery)
       ctx.beginPath();
-      ctx.moveTo(lx, ly + 24);
-      ctx.lineTo(lx, 300);
-      ctx.lineTo(bx, 300);
-      ctx.lineTo(bx, by + 20);
-      ctx.stroke();
-
-      // Ammeter
-      const amX = ammeterConn === "series" ? 250 : 350;
-      const amY = ammeterConn === "series" ? 300 : 100;
-      const needleA = isRunning ? (ammeterConn === "parallel" ? 1.0 : currentVal / 1.0) : 0;
-      drawMeter(amX, amY, "A", currentVal.toFixed(2), "A", needleA, "#3b82f6");
-      ctx.fillStyle = ammeterConn === "series" ? "#22c55e" : "#ef4444";
-      ctx.font = "9px 'Space Grotesk'";
-      ctx.textAlign = "center";
-      ctx.fillText(ammeterConn === "series" ? "Nối tiếp ✓" : "Song song ✗", amX, amY + 58);
-
-      // Voltmeter
-      const vmX = 500, vmY = 200;
-      const needleV = isRunning ? voltVal / 10.0 : 0;
-      drawMeter(vmX, vmY, "V", voltVal.toFixed(1), "V", needleV, "#22c55e");
-      ctx.fillStyle = voltmeterConn === "parallel" ? "#22c55e" : "#ef4444";
-      ctx.font = "9px 'Space Grotesk'";
-      ctx.fillText(voltmeterConn === "parallel" ? "Song song ✓" : "Ngắt", vmX, vmY + 58);
-
-      // Voltmeter wires
-      if (voltmeterConn === "parallel") {
-        ctx.strokeStyle = circuitOk ? "#22c55e" : "#374151";
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(lx + 20, ly - 8);
-        ctx.lineTo(vmX - 45, ly - 8);
+      ctx.moveTo(lx, ly + 25);
+      ctx.lineTo(lx, 320);
+      if (ammeterConn === "series") {
+        ctx.lineTo(amX + 55, 320); // to ammeter
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(lx, ly + 24);
-        ctx.lineTo(lx + 60, ly + 40);
-        ctx.lineTo(vmX - 45, vmY + 10);
+        ctx.moveTo(amX - 55, 320); // from ammeter
+      } else {
+        ctx.lineTo(bx, 320);
+      }
+      ctx.lineTo(bx, 320);
+      ctx.lineTo(bx, by + 25);
+      ctx.stroke();
+
+      // Short circuit wire (Ammeter parallel)
+      if (ammeterConn === "parallel") {
+        ctx.strokeStyle = isRunning ? "#ef4444" : "#334155";
+        ctx.lineWidth = isRunning ? 5 : 2;
+        ctx.beginPath();
+        ctx.moveTo(lx - 25, by);
+        ctx.lineTo(lx - 25, amY + 55);
+        ctx.lineTo(amX, amY + 55);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(lx, ly + 25);
+        ctx.lineTo(lx + 25, ly + 25);
+        ctx.lineTo(lx + 25, amY);
+        ctx.lineTo(amX + 55, amY);
+        ctx.stroke();
+      }
+
+      // Voltmeter wires (parallel to bulb)
+      if (voltmeterConn === "parallel") {
+        ctx.strokeStyle = circuitOk ? "#22c55e" : "#334155";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(lx + 25, ly - 10);
+        ctx.lineTo(vmX - 55, ly - 10);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(lx, ly + 25);
+        ctx.lineTo(lx + 50, ly + 40);
+        ctx.lineTo(vmX - 55, vmY + 30);
         ctx.stroke();
         ctx.setLineDash([]);
       }
 
-      // Warning flash
-      if (isRunning && ammeterConn === "parallel") {
-        const flash = Math.sin(t * 10) > 0;
-        if (flash) {
-          ctx.fillStyle = "rgba(239,68,68,0.15)";
-          ctx.fillRect(0, 0, W, H);
-          ctx.fillStyle = "#ef4444";
-          ctx.font = "bold 18px 'Space Grotesk'";
-          ctx.textAlign = "center";
-          ctx.fillText("⚠️ NGẮN MẠCH!", W / 2, 40);
-        }
-      }
+      // --- DRAW COMPONENTS ---
+      
+      // Battery
+      ctx.fillStyle = "#1e293b";
+      ctx.strokeStyle = "#475569";
+      ctx.beginPath();
+      ctx.roundRect(bx - 40, by - 25, 80, 50, 6);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#ef4444"; ctx.fillRect(bx + 30, by - 12, 10, 24); // +
+      ctx.fillStyle = "#3b82f6"; ctx.fillRect(bx - 40, by - 12, 10, 24); // -
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 14px 'JetBrains Mono'";
+      ctx.textAlign = "center";
+      ctx.fillText(`${bv}V`, bx, by + 5);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "10px 'Space Grotesk'";
+      ctx.fillText("NGUỒN ĐIỆN", bx, by + 38);
 
-      // Particles
-      if (circuitOk && showParticles) {
-        const speed = 0.2 + (bv / 9) * 0.3;
-        for (let i = 0; i < 6; i++) {
-          const frac = (t * speed + i / 6) % 1;
-          let px: number, py: number;
-          if (frac < 0.33) {
-            px = bx + 34 + (lx - 25 - bx - 34) * (frac / 0.33);
-            py = by;
-          } else if (frac < 0.66) {
-            const f = (frac - 0.33) / 0.33;
-            px = lx;
-            py = ly + 24 + (300 - ly - 24) * f;
+      // Bulb
+      const brightness = circuitOk ? Math.min(bv / 12, 1) : 0;
+      if (circuitOk) {
+        ctx.shadowColor = "#fbbf24";
+        ctx.shadowBlur = 20 + brightness * 30;
+        ctx.fillStyle = `rgba(251,191,36,${0.6 + brightness * 0.4})`;
+      } else {
+        ctx.fillStyle = "#1e293b";
+        ctx.shadowBlur = 0;
+      }
+      ctx.beginPath();
+      ctx.arc(lx, ly - 10, 25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      
+      // Bulb base
+      ctx.fillStyle = "#64748b";
+      ctx.beginPath(); ctx.roundRect(lx - 12, ly + 12, 24, 15, 2); ctx.fill();
+      ctx.fillStyle = "#475569";
+      ctx.fillRect(lx - 8, ly + 27, 16, 5);
+      ctx.fillStyle = "#cbd5e1";
+      ctx.font = "bold 11px 'Space Grotesk'";
+      ctx.fillText("BÓNG ĐÈN", lx, ly + 45);
+
+      // Draw Meters
+      drawMeter(amX, amY, "AMPE KẾ (A)", currentVal.toFixed(2), "A", 0, isShortCircuit ? "#ef4444" : "#3b82f6", 2); // Max 2A scale
+      drawMeter(vmX, vmY, "VÔN KẾ (V)", voltVal.toFixed(1), "V", 0, "#22c55e", 15); // Max 15V scale
+
+      // Particles (Electrons)
+      if (isRunning && showParticles) {
+        const speed = isShortCircuit ? 1.5 : 0.2 + (bv / 12) * 0.4;
+        const particleColor = isShortCircuit ? "#ef4444" : "#fbbf24";
+        
+        // Draw particles on main loop
+        for (let i = 0; i < 8; i++) {
+          const frac = (t * speed + i / 8) % 1;
+          let px = 0, py = 0;
+          
+          if (!isShortCircuit) {
+            // Normal path
+            if (frac < 0.3) {
+              px = bx + 40 + (lx - 25 - bx - 40) * (frac / 0.3);
+              py = by;
+            } else if (frac < 0.6) {
+              const f = (frac - 0.3) / 0.3;
+              px = lx;
+              py = ly + 25 + (320 - ly - 25) * f;
+            } else {
+              const f = (frac - 0.6) / 0.4;
+              px = lx - (lx - bx) * f;
+              py = 320;
+            }
           } else {
-            const f = (frac - 0.66) / 0.34;
-            px = lx + (bx - lx) * f;
-            py = 300;
+            // Short circuit path
+            if (frac < 0.4) {
+              px = bx + 40 + (lx - 25 - bx - 40) * (frac / 0.4);
+              py = by;
+            } else if (frac < 0.7) {
+              px = lx - 25;
+              py = by - (by - amY - 55) * ((frac - 0.4)/0.3);
+            } else {
+              px = lx - 25 - (lx - 25 - bx)* ((frac - 0.7)/0.3);
+              py = 320; // Simplified short return path visualization
+            }
           }
-          ctx.fillStyle = "#fbbf24";
-          ctx.shadowColor = "#fbbf24";
-          ctx.shadowBlur = 6;
-          ctx.beginPath();
-          ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-          ctx.fill();
+
+          if (px !== 0) {
+            ctx.fillStyle = particleColor;
+            ctx.shadowColor = particleColor;
+            ctx.shadowBlur = isShortCircuit ? 10 : 5;
+            ctx.beginPath();
+            ctx.arc(px, py, isShortCircuit ? 3.5 : 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
         ctx.shadowBlur = 0;
       }
 
-      ctx.fillStyle = "#475569";
-      ctx.font = "12px 'Space Grotesk'";
-      ctx.textAlign = "center";
-      ctx.fillText("Thay đổi điện áp nguồn bằng thanh trượt bên dưới", W / 2, H - 15);
+      // Warning text on canvas
+      if (isShortCircuit && isRunning) {
+        ctx.fillStyle = "#ef4444";
+        ctx.font = "bold 24px 'Space Grotesk'";
+        ctx.textAlign = "center";
+        ctx.fillText("⚠️ CẢNH BÁO: NGẮN MẠCH!", W / 2, 40);
+        ctx.font = "14px 'Space Grotesk'";
+        ctx.fillStyle = "#fca5a5";
+        ctx.fillText("Dòng điện quá lớn sẽ làm cháy Ampe kế!", W / 2, 65);
+      }
 
       animRef.current = requestAnimationFrame(draw);
     };
     draw();
     return () => cancelAnimationFrame(animRef.current);
-  }, [isRunning, ammeterConn, voltmeterConn, showParticles, bv, circuitOk, currentVal, voltVal]);
+  }, [isRunning, ammeterConn, voltmeterConn, showParticles, bv, circuitOk, currentVal, voltVal, isShortCircuit]);
 
   return (
-    <div className="space-y-4">
-      <LessonHeader icon={Gauge} title="Bài 24-25: Cường độ & Hiệu điện thế" subtitle="Đo cường độ dòng điện và hiệu điện thế">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      <LessonHeader 
+        icon={Gauge} 
+        title="Bài 24-25: Cường độ dòng điện & Hiệu điện thế" 
+        subtitle="Khoa học tự nhiên 8 - Chủ đề: Điện"
+      >
         <ControlPanel
           isRunning={isRunning}
           onToggleRun={() => { setIsRunning(!isRunning); setWarned(false); play("switch"); }}
@@ -278,87 +371,134 @@ export default function Lesson2425() {
       </LessonHeader>
 
       <LessonMedia
-        title="Cường độ và hiệu điện thế"
-        summary="Bài học giới thiệu cách mắc ampe kế nối tiếp và vôn kế song song để đo cường độ và hiệu điện thế đúng.
-Bạn có thể thay đổi điện áp và thử nghiệm kết nối khác nhau." 
-        audioText="Hãy quan sát cách mắc ampe kế và vôn kế. Ampe kế phải nối tiếp để đo đúng cường độ, còn vôn kế phải song song với đoạn mạch để đo hiệu điện thế." 
+        title="Đo lường trong mạch điện"
+        summary="Cường độ dòng điện (I) cho biết mức độ mạnh/yếu của dòng điện, được đo bằng Ampe kế (A). Hiệu điện thế (U) là sự chênh lệch điện thế giữa hai điểm, được đo bằng Vôn kế (V). Việc mắc đúng thiết bị đo là cực kỳ quan trọng để đảm bảo an toàn." 
+        audioText="Để đo dòng điện, ta dùng Ampe kế mắc nối tiếp. Để đo hiệu điện thế, ta dùng Vôn kế mắc song song. Tuyệt đối không mắc Ampe kế song song vì sẽ gây đoản mạch, gây cháy nổ." 
       />
 
-      <div className="glass-panel p-4">
+      {/* Guide Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="glass-panel p-4 flex gap-4 bg-blue-500/5 border-blue-500/20">
+          <Activity className="w-8 h-8 text-blue-400 shrink-0" />
+          <div>
+            <h4 className="text-sm font-bold text-blue-100 uppercase mb-1">Đo cường độ (I)</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Dùng <b>Ampe kế</b>. Phải mắc <b>NỐI TIẾP</b> với thiết bị cần đo để toàn bộ dòng điện chạy qua nó. (Ampe kế có điện trở rất nhỏ ≈ 0).
+            </p>
+          </div>
+        </div>
+        <div className="glass-panel p-4 flex gap-4 bg-emerald-500/5 border-emerald-500/20">
+          <Gauge className="w-8 h-8 text-emerald-400 shrink-0" />
+          <div>
+            <h4 className="text-sm font-bold text-emerald-100 uppercase mb-1">Đo hiệu điện thế (U)</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Dùng <b>Vôn kế</b>. Phải mắc <b>SONG SONG</b> với hai đầu thiết bị cần đo. (Vôn kế có điện trở rất lớn nên không làm thay đổi dòng điện nhánh chính).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="glass-panel p-1 bg-slate-900/50 overflow-hidden relative shadow-lg border border-white/5">
         <canvas
           ref={canvasRef}
-          width={700}
+          width={800}
           height={400}
           className="w-full rounded-lg"
-          style={{ maxHeight: "400px", background: "#0f1420" }}
-          role="img"
-          aria-label="Mô phỏng đo cường độ dòng điện và hiệu điện thế bằng ampe kế và vôn kế"
+          style={{ maxHeight: "400px" }}
         />
       </div>
 
-      {/* Voltage slider */}
-      <div className="glass-panel p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-muted-foreground">⚡ Điện áp nguồn (U)</span>
-          <span className="text-xs font-mono text-primary font-bold">{bv}V</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="glass-panel p-5">
+             <div className="flex items-center gap-2 mb-4">
+              <BookOpen className="w-5 h-5 text-primary" />
+              <h3 className="font-bold text-lg">Bảng điều khiển kết nối</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                <div className="mb-3 sm:mb-0">
+                  <p className="font-bold text-blue-400 text-sm">Kết nối Ampe kế (A)</p>
+                  <p className="text-xs text-muted-foreground">Đang nối: {ammeterConn === "series" ? "Nối tiếp dòng chính" : "Song song (NGUY HIỂM)"}</p>
+                </div>
+                <button
+                  onClick={() => { setAmmeterConn(ammeterConn === "series" ? "parallel" : "series"); play("switch"); }}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all shadow-md ${
+                    ammeterConn === "series"
+                      ? "bg-blue-600 hover:bg-blue-500 text-white"
+                      : "bg-red-600 hover:bg-red-500 text-white animate-pulse"
+                  }`}
+                >
+                  {ammeterConn === "series" ? "✅ Đã mắc nối tiếp" : "❌ Mắc song song (Lỗi)"}
+                </button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                <div className="mb-3 sm:mb-0">
+                  <p className="font-bold text-emerald-400 text-sm">Kết nối Vôn kế (V)</p>
+                  <p className="text-xs text-muted-foreground">Đang nối: {voltmeterConn === "parallel" ? "Hai đầu bóng đèn" : "Đã tháo dây"}</p>
+                </div>
+                <button
+                  onClick={() => { setVoltmeterConn(voltmeterConn === "parallel" ? "none" : "parallel"); play("switch"); }}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all shadow-md ${
+                    voltmeterConn === "parallel"
+                      ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                      : "bg-slate-700 hover:bg-slate-600 text-white"
+                  }`}
+                >
+                  {voltmeterConn === "parallel" ? "✅ Đã mắc song song" : "Thêm Vôn kế"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <Slider
-          value={batteryVoltage}
-          onValueChange={setBatteryVoltage}
-          min={1}
-          max={9}
-          step={0.5}
-        />
-        <div className="flex justify-between mt-1">
-          <span className="text-[10px] text-muted-foreground/50">1V</span>
-          <span className="text-[10px] text-muted-foreground/50">9V</span>
+
+        <div className="space-y-4">
+          <div className="glass-panel p-5 border-t-4 border-amber-500 bg-slate-900">
+            <h3 className="text-sm font-bold text-amber-500 mb-4 uppercase flex items-center gap-2">
+              <Zap className="w-4 h-4" /> Điện áp nguồn (U)
+            </h3>
+            
+            <div className="text-center mb-6">
+              <span className="text-4xl font-black font-mono text-white drop-shadow-md">
+                {bv}
+              </span>
+              <span className="text-xl text-muted-foreground ml-1">V</span>
+            </div>
+
+            <Slider
+              value={batteryVoltage}
+              onValueChange={setBatteryVoltage}
+              min={1}
+              max={15}
+              step={1}
+              className="mb-2"
+            />
+            <div className="flex justify-between text-xs font-bold text-slate-500">
+              <span>MIN (1V)</span>
+              <span>MAX (15V)</span>
+            </div>
+          </div>
+          
+          {ammeterConn === "parallel" && (
+             <div className="glass-panel p-4 bg-red-950/30 border border-red-500/30 animate-pulse">
+                <div className="flex items-center gap-2 text-red-500 font-bold text-sm mb-1">
+                  <AlertTriangle className="w-4 h-4" /> Cảnh báo ngắn mạch
+                </div>
+                <p className="text-xs text-red-200/70">Mạch đang bị đoản mạch do Ampe kế mắc sai. Dòng điện sẽ rất lớn, đèn không sáng. Hãy sửa lại kết nối Ampe kế.</p>
+             </div>
+          )}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => { setAmmeterConn(ammeterConn === "series" ? "parallel" : "series"); play("switch"); }}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            ammeterConn === "series"
-              ? "bg-primary/20 text-primary border border-primary/30"
-              : "bg-destructive/20 text-destructive border border-destructive/30"
-          }`}
-        >
-          Ampe kế: {ammeterConn === "series" ? "Nối tiếp ✓" : "Song song ✗"}
-        </button>
-        <button
-          onClick={() => { setVoltmeterConn(voltmeterConn === "parallel" ? "none" : "parallel"); play("switch"); }}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            voltmeterConn === "parallel"
-              ? "bg-success/20 text-success border border-success/30"
-              : "bg-secondary/50 text-muted-foreground border border-border/30"
-          }`}
-        >
-          Vôn kế: {voltmeterConn === "parallel" ? "Song song ✓" : "Ngắt"}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Cường độ dòng điện (I)</p>
-          <p className="text-3xl font-bold font-mono text-primary">
-            {currentVal.toFixed(2)}<span className="text-lg ml-1">A</span>
-          </p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Hiệu điện thế (U)</p>
-          <p className="text-3xl font-bold font-mono text-success">
-            {voltVal.toFixed(1)}<span className="text-lg ml-1">V</span>
-          </p>
-        </div>
-      </div>
       <LessonWrapUp
         lessonTitle="Bài 24-25: Cường độ dòng điện và hiệu điện thế"
         quizLesson="24-25"
         points={[
-          "Ampe kế mắc nối tiếp để đo cường độ dòng điện I.",
-          "Vôn kế mắc song song để đo hiệu điện thế U.",
-          "Mắc sai ampe kế song song có thể gây ngắn mạch nguy hiểm.",
+          "Cường độ dòng điện (I) đo bằng Ampe kế (Ký hiệu: A). Mắc nối tiếp vào đoạn mạch.",
+          "Hiệu điện thế (U) đo bằng Vôn kế (Ký hiệu: V). Mắc song song với hai đầu đoạn mạch cần đo.",
+          "TUYỆT ĐỐI KHÔNG mắc Ampe kế song song với nguồn điện hoặc thiết bị, vì điện trở của Ampe kế rất nhỏ sẽ gây đoản mạch (chập mạch)."
         ]}
       />
     </div>
