@@ -67,6 +67,21 @@ export type SubmitQuizResult = {
   }>;
 };
 
+export type StatsOverview = {
+  totalAttempts: number;
+  byLesson: Array<{
+    lessonId: LessonId;
+    lessonTitle: string;
+    attempts: number;
+    averagePercentage: number;
+    latestAttempt: string | null;
+  }>;
+};
+
+export type QuizAttemptRecord = SubmitQuizResult & {
+  studentName: string;
+};
+
 export const api = {
   getQuizzes: () => request<QuizSummary[]>("/api/quizzes"),
   getQuizByLesson: (lessonId: LessonId) => request<LessonQuizPayload>(`/api/quizzes/${lessonId}`),
@@ -75,5 +90,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  getStatsOverview: () => request<StatsOverview>("/api/stats/overview"),
+  getAttempts: () => request<QuizAttemptRecord[]>("/api/attempts"),
 };
 

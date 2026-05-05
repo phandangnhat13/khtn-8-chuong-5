@@ -1,5 +1,4 @@
-import { useCallback, useState } from "react";
-import { ImagePlus, Volume2, Speaker, Box } from "lucide-react";
+import { ImagePlus, Volume2, Box } from "lucide-react";
 import { ThreeScene } from "@/components/ThreeScene";
 import { LessonIllustration2D } from "@/components/media/LessonIllustration2D";
 import type { LessonMediaVariant } from "@/types/lessonMedia";
@@ -7,29 +6,12 @@ import type { LessonMediaVariant } from "@/types/lessonMedia";
 interface LessonMediaProps {
   title: string;
   summary: string;
-  audioText: string;
+  audioText?: string;
   /** Minh họa 2D (SVG Bézier) + scene 3D theo từng chủ đề bài */
   mediaVariant?: LessonMediaVariant;
 }
 
-export function LessonMedia({ title, summary, audioText, mediaVariant = "circuit" }: LessonMediaProps) {
-  const [speaking, setSpeaking] = useState(false);
-
-  const speak = useCallback(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(audioText);
-    utterance.rate = 0.95;
-    utterance.pitch = 1.05;
-    utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-  }, [audioText]);
-
+export function LessonMedia({ title, summary, mediaVariant = "circuit" }: LessonMediaProps) {
   return (
     <div className="glass-panel p-4 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -37,14 +19,6 @@ export function LessonMedia({ title, summary, audioText, mediaVariant = "circuit
           <p className="text-xs font-medium uppercase tracking-widest text-accent">Minh họa đa phương tiện</p>
           <h2 className="text-lg font-semibold text-foreground mt-2">{title}</h2>
         </div>
-        <button
-          type="button"
-          onClick={speak}
-          className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition"
-        >
-          <Speaker className="w-4 h-4" />
-          {speaking ? "Đang nói..." : "Nghe giải thích"}
-        </button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -70,7 +44,7 @@ export function LessonMedia({ title, summary, audioText, mediaVariant = "circuit
           <Box className="w-4 h-4" />
           <span className="text-xs font-semibold uppercase tracking-widest">Mô hình 3D</span>
         </div>
-        <div className="rounded-3xl bg-slate-950/90 overflow-hidden min-h-[420px] border border-white/5">
+        <div className="rounded-3xl bg-slate-900/80 overflow-hidden min-h-[420px] border border-white/10">
           <ThreeScene variant={mediaVariant} />
         </div>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -79,7 +53,7 @@ export function LessonMedia({ title, summary, audioText, mediaVariant = "circuit
           {mediaVariant === "circuit" &&
             "Nhấp pin để ngắt/bật nguồn; kéo bóng đèn trên mặt phẳng. Dòng electron chỉ rõ khi mạch được bật."}
           {mediaVariant === "motorThermal" &&
-            "Nhấp cuộn dây để tăng cường từ trường; kéo kim la bàn để đổi hướng. Chuột phải/kéo quay camera."}
+            "Chọn Tác dụng từ hoặc Tác dụng nhiệt trong bảng thông số 3D, rồi chỉnh điện áp để quan sát kim la bàn lệch hoặc dây dẫn nóng lên."}
           {mediaVariant === "meters" &&
             "Nhấp mặt đồng hồ A hoặc V để đảo chỉ thị (minh hoạ đọc số). Kéo đèn/trắc độ như trong lab."}
         </p>

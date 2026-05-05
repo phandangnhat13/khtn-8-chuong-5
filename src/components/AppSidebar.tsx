@@ -1,4 +1,4 @@
-import { Zap, CircuitBoard, Magnet, Gauge, ClipboardCheck, FlaskConical } from "lucide-react";
+import { Zap, CircuitBoard, Magnet, Gauge, ClipboardCheck, FlaskConical, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -87,6 +87,18 @@ export function AppSidebar() {
                   >
                     <ClipboardCheck className="mr-3 h-4 w-4 shrink-0" />
                     {!collapsed && <span className="text-sm">Kiểm tra kiến thức</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/quiz/stats"
+                    className="hover:bg-secondary/80 transition-colors rounded-lg px-3 py-2.5"
+                    activeClassName="bg-accent/15 text-accent font-semibold warm-glow"
+                  >
+                    <BarChart3 className="mr-3 h-4 w-4 shrink-0" />
+                    {!collapsed && <span className="text-sm">Thống kê quiz</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

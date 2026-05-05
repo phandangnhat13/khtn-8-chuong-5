@@ -13,6 +13,7 @@ const Lesson2122 = lazy(() => import("./pages/Lesson2122.tsx"));
 const Lesson23 = lazy(() => import("./pages/Lesson23.tsx"));
 const Lesson2425 = lazy(() => import("./pages/Lesson2425.tsx"));
 const QuizPage = lazy(() => import("./pages/QuizPage.tsx"));
+const QuizStatsPage = lazy(() => import("./pages/QuizStatsPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/lesson/23" element={<LessonLayout><Lesson23 /></LessonLayout>} />
           <Route path="/lesson/24-25" element={<LessonLayout><Lesson2425 /></LessonLayout>} />
           <Route path="/quiz" element={<LessonLayout><QuizPage /></LessonLayout>} />
+          <Route path="/quiz/stats" element={<LessonLayout><QuizStatsPage /></LessonLayout>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

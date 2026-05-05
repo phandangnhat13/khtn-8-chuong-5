@@ -19,6 +19,10 @@ interface Scrap {
   angle: number;
 }
 
+const CHARGE_DECAY_DELAY_MS = 1200;
+const CHARGE_DECAY_PER_SECOND = 7;
+const PAPER_RELEASE_CHARGE = 12;
+
 export default function Lesson20() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -34,6 +38,8 @@ export default function Lesson20() {
   const lastMouseX = useRef(0);
   const lastMouseY = useRef(0);
   const lastSparkTime = useRef(0);
+  const isRubbingRef = useRef(false);
+  const lastRubbedAtRef = useRef(0);
   const { play } = useSound();
   const openHelp = () => window.dispatchEvent(new Event("open-help-dialog"));
 
@@ -60,6 +66,8 @@ export default function Lesson20() {
     setRubCount(0);
     setRulerPos({ x: 300, y: 150 });
     setIsRunning(false);
+    isRubbingRef.current = false;
+    lastRubbedAtRef.current = 0;
     initScraps();
     play("click");
   };
@@ -78,6 +86,21 @@ export default function Lesson20() {
     },
     onOpenHelp: openHelp,
   });
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const shouldDecay = !isRubbingRef.current && Date.now() - lastRubbedAtRef.current > CHARGE_DECAY_DELAY_MS;
+      if (!shouldDecay) return;
+
+      setCharge((currentCharge) => {
+        if (currentCharge <= 0) return 0;
+        const easingDecay = Math.max(CHARGE_DECAY_PER_SECOND / 12, currentCharge * 0.018);
+        return Math.max(0, currentCharge - easingDecay);
+      });
+    }, 100);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -174,6 +197,12 @@ export default function Lesson20() {
       // Paper scraps with attraction physics
       const scraps = scrapsRef.current;
       scraps.forEach(s => {
+        if (s.attached && charge < PAPER_RELEASE_CHARGE) {
+          s.attached = false;
+          s.vx = (Math.random() - 0.5) * 0.8;
+          s.vy = 0.4;
+        }
+
         if (charge > 20 && !s.attached) {
           const dx = rx - s.x;
           const dy = ry - s.y;
@@ -181,6 +210,29 @@ export default function Lesson20() {
           const attractionRadius = (140 + charge * 1.5) * forceMultiplier;
           if (dist < attractionRadius) {
             const force = (charge / 100) * 0.45 * forceMultiplier / Math.max(dist / 100, 0.35);
+            if (showParticles) {
+              const alpha = Math.min(0.65, (1 - dist / attractionRadius) * (charge / 100));
+              const arrowX = s.x + dx * 0.35;
+              const arrowY = s.y + dy * 0.35;
+              ctx.save();
+              ctx.strokeStyle = `rgba(96,165,250,${alpha})`;
+              ctx.fillStyle = `rgba(96,165,250,${alpha})`;
+              ctx.lineWidth = 1.2;
+              ctx.setLineDash([4, 5]);
+              ctx.beginPath();
+              ctx.moveTo(s.x, s.y);
+              ctx.lineTo(arrowX, arrowY);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              const angle = Math.atan2(dy, dx);
+              ctx.beginPath();
+              ctx.moveTo(arrowX, arrowY);
+              ctx.lineTo(arrowX - Math.cos(angle - 0.45) * 7, arrowY - Math.sin(angle - 0.45) * 7);
+              ctx.lineTo(arrowX - Math.cos(angle + 0.45) * 7, arrowY - Math.sin(angle + 0.45) * 7);
+              ctx.closePath();
+              ctx.fill();
+              ctx.restore();
+            }
             s.vx += dx * force * 0.012;
             s.vy += dy * force * 0.012;
             if (dist < 32 + charge * 0.08) {
@@ -191,14 +243,15 @@ export default function Lesson20() {
           }
         }
         if (s.attached) {
-          s.x = rx + (s.x - rx) * 0.98;
-          s.y = ry + 12 + Math.sin(Date.now() / 500 + s.angle) * 2;
+          s.x += (rx - s.x) * 0.18;
+          s.y += (ry + 12 + Math.sin(Date.now() / 500 + s.angle) * 2 - s.y) * 0.22;
         } else {
           s.vy += 0.05;
           s.x += s.vx;
           s.y += s.vy;
           s.vx *= 0.98;
           s.vy *= 0.98;
+          s.angle += s.vx * 0.03;
           if (s.y > 360) { s.y = 360; s.vy = 0; }
         }
 
@@ -263,11 +316,16 @@ export default function Lesson20() {
     const y = e.clientY - rect.top;
     setRulerPos({ x, y });
 
-    if (x > 40 && x < 160 && y > 90 && y < 170) {
+    const isOverCloth = x > 40 && x < 160 && y > 90 && y < 170;
+    isRubbingRef.current = false;
+
+    if (isOverCloth) {
       const dx = x - lastMouseX.current;
       const dy = y - lastMouseY.current;
       const dragDistance = Math.hypot(dx, dy);
       if (dragDistance > 2) {
+        isRubbingRef.current = true;
+        lastRubbedAtRef.current = Date.now();
         setRubCount((p) => p + 1);
         setCharge((p) => Math.min(p + Math.min(dragDistance * 0.4, 2), 100));
         const now = Date.now();
@@ -314,8 +372,14 @@ Các học sinh có thể tương tác để thấy lực hút mạnh lên khi �
             aria-label="Mô phỏng nhiễm điện do cọ xát với thước nhựa và mẩu giấy"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
-            onMouseUp={() => setIsDragging(false)}
-            onMouseLeave={() => setIsDragging(false)}
+            onMouseUp={() => {
+              setIsDragging(false);
+              isRubbingRef.current = false;
+            }}
+            onMouseLeave={() => {
+              setIsDragging(false);
+              isRubbingRef.current = false;
+            }}
           />
         </div>
       </div>
