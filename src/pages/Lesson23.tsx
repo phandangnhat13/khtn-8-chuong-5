@@ -295,8 +295,7 @@ export default function Lesson23() {
   }, [mode, isRunning, showParticles, voltage]);
 
   return (
-
-    <div className="space-y-4">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <LessonHeader icon={Magnet} title="Bài 23: Tác dụng dòng điện" subtitle="Tác dụng từ và tác dụng nhiệt">
         <ControlPanel
           isRunning={isRunning}
@@ -309,7 +308,7 @@ export default function Lesson23() {
       </LessonHeader>
 
       <LessonMedia
-
+        mediaVariant="motorThermal"
         title="Tác dụng của dòng điện"
         summary="Quan sát tác dụng từ khi cuộn dây cấp điện tạo ra từ trường và tác dụng nhiệt khi dây dẫn nóng lên dưới điện áp.
 Bạn có thể chuyển đổi giữa chế độ từ trường và nhiệt để thấy khác biệt." 
@@ -331,16 +330,18 @@ Bạn có thể chuyển đổi giữa chế độ từ trường và nhiệt đ
         </button>
       </div>
 
-      <div className="glass-panel p-4">
-        <canvas
-          ref={canvasRef}
-          width={700}
-          height={400}
-          className="w-full rounded-lg"
-          style={{ maxHeight: "400px", background: "#0f1420" }}
-          role="img"
-          aria-label="Mô phỏng tác dụng từ và tác dụng nhiệt của dòng điện"
-        />
+      <div className="glass-panel p-4 space-y-2">
+        <div className="border border-white/5 rounded-lg overflow-hidden bg-slate-900/50">
+          <canvas
+            ref={canvasRef}
+            width={700}
+            height={420}
+            className="w-full"
+            style={{ maxHeight: "420px", background: "#0f1420" }}
+            role="img"
+            aria-label="Mô phỏng tác dụng từ và tác dụng nhiệt của dòng điện"
+          />
+        </div>
       </div>
 
       {/* Voltage slider */}

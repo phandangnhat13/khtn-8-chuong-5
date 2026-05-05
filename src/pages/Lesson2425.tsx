@@ -695,7 +695,7 @@ export default function Lesson2425() {
   }, [isRunning, ammeterConn, voltmeterConn, showParticles, bv, circuitOk, currentVal, voltVal, circuitVariant, circuitConfig.label, circuitConfig.resistance, circuitConfig.voltageTargetLabel]);
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <LessonHeader icon={Gauge} title="Bài 24-25: Cường độ & Hiệu điện thế" subtitle="Đo cường độ dòng điện và hiệu điện thế">
         <ControlPanel
           isRunning={isRunning}
@@ -708,23 +708,25 @@ export default function Lesson2425() {
       </LessonHeader>
 
       <LessonMedia
-
+        mediaVariant="meters"
         title="Cường độ và hiệu điện thế"
         summary="Bài học giới thiệu cách mắc ampe kế nối tiếp và vôn kế song song để đo cường độ và hiệu điện thế đúng.
 Bạn có thể thay đổi điện áp, đổi đoạn mạch và thử nghiệm kết nối khác nhau." 
         audioText="Hãy quan sát cách mắc ampe kế và vôn kế. Ampe kế phải nối tiếp để đo đúng cường độ, còn vôn kế phải song song với đoạn mạch để đo hiệu điện thế." 
       />
 
-      <div className="glass-panel p-4">
-        <canvas
-          ref={canvasRef}
-          width={700}
-          height={400}
-          className="w-full rounded-lg"
-          style={{ maxHeight: "400px", background: "#0f1420" }}
-          role="img"
-          aria-label="Mô phỏng đo cường độ dòng điện và hiệu điện thế bằng ampe kế và vôn kế"
-        />
+      <div className="glass-panel p-4 space-y-2">
+        <div className="border border-white/5 rounded-lg overflow-hidden bg-slate-900/50">
+          <canvas
+            ref={canvasRef}
+            width={700}
+            height={420}
+            className="w-full"
+            style={{ maxHeight: "420px", background: "#0f1420" }}
+            role="img"
+            aria-label="Mô phỏng đo cường độ dòng điện và hiệu điện thế bằng ampe kế và vôn kế"
+          />
+        </div>
       </div>
 
       <div className="glass-panel p-4 space-y-3">

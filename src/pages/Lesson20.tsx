@@ -32,6 +32,7 @@ export default function Lesson20() {
   const scrapsRef = useRef<Scrap[]>([]);
   const animRef = useRef<number>(0);
   const lastMouseX = useRef(0);
+  const lastMouseY = useRef(0);
   const lastSparkTime = useRef(0);
   const { play } = useSound();
   const openHelp = () => window.dispatchEvent(new Event("open-help-dialog"));
@@ -173,15 +174,16 @@ export default function Lesson20() {
       // Paper scraps with attraction physics
       const scraps = scrapsRef.current;
       scraps.forEach(s => {
-        if (charge > 30 && !s.attached) {
+        if (charge > 20 && !s.attached) {
           const dx = rx - s.x;
           const dy = ry - s.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < (120 + charge) * forceMultiplier) {
-            const force = (charge / 100) * 0.3 * forceMultiplier / Math.max(dist / 100, 0.5);
-            s.vx += dx * force * 0.01;
-            s.vy += dy * force * 0.01;
-            if (dist < 25) {
+          const attractionRadius = (140 + charge * 1.5) * forceMultiplier;
+          if (dist < attractionRadius) {
+            const force = (charge / 100) * 0.45 * forceMultiplier / Math.max(dist / 100, 0.35);
+            s.vx += dx * force * 0.012;
+            s.vy += dy * force * 0.012;
+            if (dist < 32 + charge * 0.08) {
               s.attached = true;
               s.x = rx + (s.x - rx) * 0.5;
               s.y = ry + 12;
@@ -250,6 +252,7 @@ export default function Lesson20() {
     if (Math.abs(x - rulerPos.x) < 80 && Math.abs(y - rulerPos.y) < 15) {
       setIsDragging(true);
       lastMouseX.current = x;
+      lastMouseY.current = y;
     }
   };
 
@@ -260,12 +263,13 @@ export default function Lesson20() {
     const y = e.clientY - rect.top;
     setRulerPos({ x, y });
 
-
-    if (x > 50 && x < 150 && y > 100 && y < 160) {
-      const dx = Math.abs(x - lastMouseX.current);
-      if (dx > 3) {
-        setRubCount(p => p + 1);
-        setCharge(p => Math.min(p + 0.8, 100));
+    if (x > 40 && x < 160 && y > 90 && y < 170) {
+      const dx = x - lastMouseX.current;
+      const dy = y - lastMouseY.current;
+      const dragDistance = Math.hypot(dx, dy);
+      if (dragDistance > 2) {
+        setRubCount((p) => p + 1);
+        setCharge((p) => Math.min(p + Math.min(dragDistance * 0.4, 2), 100));
         const now = Date.now();
         if (now - lastSparkTime.current > 300) {
           play("spark");
@@ -274,11 +278,11 @@ export default function Lesson20() {
       }
     }
     lastMouseX.current = x;
+    lastMouseY.current = y;
   };
 
   return (
-
-    <div className="space-y-4">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <LessonHeader icon={Zap} title="Bài 20: Nhiễm điện" subtitle="Hiện tượng nhiễm điện do cọ xát">
         <ControlPanel
           isRunning={isRunning}
@@ -291,27 +295,29 @@ export default function Lesson20() {
       </LessonHeader>
 
       <LessonMedia
-
+        mediaVariant="electrostatic"
         title="Nhiễm điện do cọ xát"
         summary="Cọ xát thước nhựa với vải len tạo ra sự dịch chuyển electron và làm thước nhiễm điện, thu hút mẩu giấy nhẹ.
 Các học sinh có thể tương tác để thấy lực hút mạnh lên khi điện tích tăng." 
         audioText="Trong bài này, bạn sẽ thấy thước nhựa nhiễm điện khi được cọ xát với vải len. Các electron di chuyển từ vải sang thước, tạo ra lực hấp dẫn đến những mẩu giấy." 
       />
 
-      <div className="glass-panel p-4">
-        <canvas
-          ref={canvasRef}
-          width={700}
-          height={400}
-          className="w-full rounded-lg cursor-grab active:cursor-grabbing"
-          style={{ maxHeight: "400px", background: "#0f1420" }}
-          role="img"
-          aria-label="Mô phỏng nhiễm điện do cọ xát với thước nhựa và mẩu giấy"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={() => setIsDragging(false)}
-          onMouseLeave={() => setIsDragging(false)}
-        />
+      <div className="glass-panel p-4 space-y-2">
+        <div className="border border-white/5 rounded-lg overflow-hidden bg-slate-900/50">
+          <canvas
+            ref={canvasRef}
+            width={700}
+            height={420}
+            className="w-full cursor-grab active:cursor-grabbing"
+            style={{ maxHeight: "420px", background: "#0f1420" }}
+            role="img"
+            aria-label="Mô phỏng nhiễm điện do cọ xát với thước nhựa và mẩu giấy"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={() => setIsDragging(false)}
+            onMouseLeave={() => setIsDragging(false)}
+          />
+        </div>
       </div>
 
 
