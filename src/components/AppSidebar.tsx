@@ -30,7 +30,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-border/50">
       <SidebarHeader className="p-4">
         {!collapsed && (
-          <div className="flex items-center gap-3">
+          <NavLink
+            to="/"
+            className="flex items-center gap-3 rounded-xl transition-colors hover:bg-secondary/60"
+          >
             <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center electric-glow">
               <FlaskConical className="w-5 h-5 text-primary" />
             </div>
@@ -38,12 +41,12 @@ export function AppSidebar() {
               <h2 className="text-sm font-bold text-foreground tracking-tight">Phòng TN Vật Lý</h2>
               <p className="text-xs text-muted-foreground">KHTN 8 • Chương 5</p>
             </div>
-          </div>
+          </NavLink>
         )}
         {collapsed && (
-          <div className="flex justify-center">
+          <NavLink to="/" className="flex justify-center rounded-lg p-1 transition-colors hover:bg-secondary/60">
             <FlaskConical className="w-5 h-5 text-primary" />
-          </div>
+          </NavLink>
         )}
       </SidebarHeader>
 
