@@ -10,6 +10,7 @@ import {
 import { createObject } from "./ObjectFactory";
 import { SpawnType } from "./Types";
 
+
 const getInternalConnections = (
     obj: THREE.Object3D
 ) => {
@@ -622,6 +623,7 @@ export function ThreeSceneLesson23() {
     };
     const solveCircuit = () => {
 
+
         const active =
             getActiveComponents();
 
@@ -710,9 +712,69 @@ export function ThreeSceneLesson23() {
             obj.userData.current =
                 current;
 
-            obj.userData.power =
-                power;
+            // =====================================
+            // ELECTROMAGNET STATE
+            // =====================================
 
+            if (
+                obj.userData.componentType ===
+                "coil"
+            ) {
+
+                const powered =
+                    obj.userData.isPowered &&
+                    current > 0;
+
+                const strength =
+                    powered
+                        ? current * 18
+                        : 0;
+
+                obj.userData.magneticStrength =
+                    strength;
+
+                // =====================================
+                // CURRENT DIRECTION
+                // =====================================
+
+                const terminals =
+                    obj.userData.terminals;
+
+                const input =
+                    terminals?.[0];
+
+                const output =
+                    terminals?.[1];
+
+                if (
+                    input &&
+                    output
+                ) {
+
+                    const inputPos =
+                        new THREE.Vector3();
+
+                    const outputPos =
+                        new THREE.Vector3();
+
+                    input.getWorldPosition(
+                        inputPos
+                    );
+
+                    output.getWorldPosition(
+                        outputPos
+                    );
+
+                    // Direction current flows
+                    const magneticDirection =
+                        new THREE.Vector3()
+                            .subVectors(
+                                outputPos,
+                                inputPos
+                            )
+                            .normalize();
+                }
+            }
             // =====================================
             // VOLTAGE DROP
             // =====================================
@@ -722,293 +784,465 @@ export function ThreeSceneLesson23() {
                 resistance;
         });
     };
+
     const updateVisualEffects = () => {
 
 
-        draggableObjectsRef.current.forEach(
-            (obj) => {
+        for (const obj of draggableObjectsRef.current) {
+
+            // =====================================
+            // RESISTOR HEATING
+            // =====================================
+
+            if (
+                obj.userData.componentType ===
+                "thermometer"
+            ) {
+
+                const mercury =
+                    obj.userData.mercury;
+
+                if (!mercury) {
+                    continue;
+                }
+
+                const thermometerPos =
+                    new THREE.Vector3();
+
+                obj.getWorldPosition(
+                    thermometerPos
+                );
+
+                let hottestTemp = 20;
 
                 // =====================================
-                // LIGHTBULB
+                // CHECK ALL RESISTORS
                 // =====================================
 
-                if (
-                    obj.userData.componentType ===
-                    "lightbulb"
-                ) {
+                for (const other of draggableObjectsRef.current) {
 
-                    const glow =
-                        obj.userData.glowMesh;
-                    const hotCore =
-                        obj.userData.hotCore;
+                    if (
+                        other.userData.componentType !==
+                        "resistor"
+                    ) {
+                        continue;
+                    }
 
-                    if (!glow) return;
+                    // Only powered resistors heat up
+                    if (
+                        !other.userData.isPowered
+                    ) {
+                        continue;
+                    }
 
-                    const power =
-                        obj.userData.power || 0;
+                    const resistorPos =
+                        new THREE.Vector3();
 
-                    // Scale brightness
-                    const intensity =
-                        Math.min(
-                            power * 40,
-                            10
+                    other.getWorldPosition(
+                        resistorPos
+                    );
+
+                    const distance =
+                        thermometerPos.distanceTo(
+                            resistorPos
                         );
 
-                    const material =
-                        glow.material as THREE.MeshStandardMaterial;
+                    // =====================================
+                    // HEAT RANGE
+                    // =====================================
 
-                    // Emissive glow
+                    const maxRange = 8;
+
+                    if (
+                        distance > maxRange
+                    ) {
+                        continue;
+                    }
+
+                    // =====================================
+                    // HEAT INTENSITY
+                    // =====================================
+
+                    const power =
+                        other.userData.power || 0;
+
+                    const heat =
+                        power *
+                        (
+                            1 -
+                            distance / maxRange
+                        ) * 120;
+
+                    hottestTemp =
+                        Math.max(
+                            hottestTemp,
+                            20 + heat
+                        );
+                }
+
+                // =====================================
+                // SMOOTH TEMPERATURE
+                // =====================================
+
+                obj.userData.temperature +=
+                    (
+                        hottestTemp -
+                        obj.userData.temperature
+                    ) * 0.02;
+
+                const temp =
+                    obj.userData.temperature;
+
+                // =====================================
+                // MERCURY HEIGHT
+                // =====================================
+
+                const normalized =
+                    Math.min(
+                        Math.max(
+                            (temp - 20) / 100,
+                            0
+                        ),
+                        1
+                    );
+
+                // =====================================
+                // MERCURY LENGTH
+                // =====================================
+
+                const length =
+                    1 + normalized * 3.5;
+
+                // Scale horizontally only
+                mercury.scale.x = length;
+
+                // =====================================
+                // KEEP LEFT SIDE ANCHORED
+                // =====================================
+
+                // Original position = -0.55
+                // Move half of added length
+
+                mercury.position.x =
+                    -0.55 +
+                    ((length - 1) * 1.4) / 2;
+
+                // =====================================
+                // COLOR SHIFT
+                // =====================================
+
+                const material =
+                    mercury.material as THREE.MeshStandardMaterial;
+
+                material.emissive.set(
+                    normalized > 0.6
+                        ? "#ff2200"
+                        : "#550000"
+                );
+
+                material.emissiveIntensity =
+                    normalized * 2;
+            }
+
+            // =====================================
+            // LIGHTBULB
+            // =====================================
+
+            if (
+                obj.userData.componentType ===
+                "lightbulb"
+            ) {
+
+                const glow =
+                    obj.userData.glowMesh;
+                const hotCore =
+                    obj.userData.hotCore;
+
+                if (!glow) continue;
+
+                const power =
+                    obj.userData.power || 0;
+
+                // Scale brightness
+                const intensity =
+                    Math.min(
+                        power * 40,
+                        10
+                    );
+
+                const material =
+                    glow.material as THREE.MeshStandardMaterial;
+
+                // Emissive glow
+                material.emissive.set(
+                    "#ffd966"
+                );
+
+                material.emissiveIntensity =
+                    intensity;
+
+                // Transparency
+                material.transparent =
+                    true;
+
+                material.opacity =
+                    0.08 +
+                    intensity * 0.08;
+                // =====================================
+                // HOT CORE
+                // =====================================
+
+                if (hotCore) {
+
+                    const hotMaterial =
+                        hotCore.material as THREE.MeshBasicMaterial;
+
+                    hotMaterial.opacity =
+                        Math.min(
+                            power * 1.4,
+                            1
+                        );
+
+                    hotCore.scale.setScalar(
+                        1 +
+                        power * 0.25
+                    );
+                }
+                const filament =
+                    obj.userData.filament;
+
+                if (filament) {
+
+                    const filamentMat =
+                        filament.material as THREE.MeshStandardMaterial;
+
+                    filamentMat.emissive.set(
+                        "#ffcc66"
+                    );
+
+                    filamentMat.emissiveIntensity =
+                        intensity * 2;
+                }
+            }
+            // =====================================
+            // ELECTROMAGNETIC COIL
+            // =====================================
+
+            if (
+                obj.userData.componentType ===
+                "coil"
+            ) {
+
+                const powered =
+                    obj.userData.isPowered;
+
+                const current =
+                    obj.userData.current || 0;
+
+                // =====================================
+                // MAGNETIC STRENGTH
+                // =====================================
+
+                const magneticStrength =
+                    powered
+                        ? current * 25
+                        : 0;
+
+                obj.userData.magneticStrength =
+                    magneticStrength;
+
+                console.log(
+                    "COIL DEBUG",
+                    {
+                        powered,
+                        current,
+                        magneticStrength,
+                    }
+                );
+
+                // =====================================
+                // COIL WRAP GLOW
+                // =====================================
+
+                const wraps =
+                    obj.userData.wraps || [];
+
+                wraps.forEach((wrap: THREE.Mesh) => {
+
+                    const material =
+                        wrap.material as THREE.MeshStandardMaterial;
+
+                    if (!powered) {
+
+                        material.emissive.set(
+                            "#000000"
+                        );
+
+                        material.emissiveIntensity = 0;
+
+                        return;
+                    }
+
                     material.emissive.set(
-                        "#ffd966"
+                        "#ff8800"
                     );
 
                     material.emissiveIntensity =
-                        intensity;
-
-                    // Transparency
-                    material.transparent =
-                        true;
-
-                    material.opacity =
-                        0.08 +
-                        intensity * 0.08;
-                    // =====================================
-                    // HOT CORE
-                    // =====================================
-
-                    if (hotCore) {
-
-                        const hotMaterial =
-                            hotCore.material as THREE.MeshBasicMaterial;
-
-                        hotMaterial.opacity =
-                            Math.min(
-                                power * 1.4,
-                                1
-                            );
-
-                        hotCore.scale.setScalar(
-                            1 +
-                            power * 0.25
-                        );
-                    }
-                    const filament =
-                        obj.userData.filament;
-
-                    if (filament) {
-
-                        const filamentMat =
-                            filament.material as THREE.MeshStandardMaterial;
-
-                        filamentMat.emissive.set(
-                            "#ffcc66"
-                        );
-
-                        filamentMat.emissiveIntensity =
-                            intensity * 2;
-                    }
-                }
-                // =====================================
-                // ELECTROMAGNETIC COIL
-                // =====================================
-
-                if (
-                    obj.userData.componentType ===
-                    "coil"
-                ) {
-
-                    const glow =
-                        obj.userData.fieldGlow;
-
-                    if (!glow) return;
-
-                    const powered =
-                        obj.userData.isPowered;
-
-                    const current =
-                        obj.userData.current || 0;
-
-                    const intensity =
-                        powered
-                            ? Math.min(
-                                current * 8,
-                                4
-                            )
-                            : 0;
-
-                    const material =
-                        glow.material as THREE.MeshBasicMaterial;
-
-                    // =====================================
-                    // GLOW VISIBILITY
-                    // =====================================
-
-                    material.opacity =
-                        0.08 + intensity * 0.15;
-
-                    glow.visible = powered;
-
-                    // =====================================
-                    // PULSE ANIMATION
-                    // =====================================
-
-                    const pulse =
-                        1 +
+                        1.5 +
                         Math.sin(
-                            performance.now() * 0.005
-                        ) * 0.12;
+                            performance.now() * 0.01
+                        ) * 0.4;
+                });
 
-                    glow.scale.set(
-                        pulse,
-                        pulse,
-                        pulse
+                // =====================================
+                // FIELD GLOW
+                // =====================================
+
+                const glow =
+                    obj.userData.fieldGlow;
+
+                if (!glow) {
+                    continue;
+                }
+
+                glow.visible =
+                    magneticStrength > 0;
+
+                const glowMaterial =
+                    glow.material as THREE.MeshBasicMaterial;
+
+                glowMaterial.opacity =
+                    Math.min(
+                        magneticStrength * 0.02,
+                        0.2
                     );
 
-                    // =====================================
-                    // ROTATION
-                    // =====================================
+                const pulse =
+                    1 +
+                    Math.sin(
+                        performance.now() * 0.003
+                    ) * 0.08;
 
-                    glow.rotation.z += 0.01;
+                glow.scale.setScalar(pulse);
 
-                    // =====================================
-                    // COIL WRAP EMISSION
-                    // =====================================
+                glow.rotation.y += 0.003;
+            }
+            // =====================================
+            // COMPASS MAGNETIC RESPONSE
+            // =====================================
 
-                    obj.traverse((child) => {
+            if (
+                obj.userData.componentType ===
+                "compass"
+            ) {
 
-                        if (
-                            child instanceof THREE.Mesh &&
-                            child.geometry instanceof THREE.TorusGeometry
-                        ) {
+                const needle =
+                    obj.userData.needle;
 
-                            const mat =
-                                child.material as THREE.MeshStandardMaterial;
-
-                            mat.emissive.set(
-                                powered
-                                    ? "#60a5fa"
-                                    : "#552200"
-                            );
-
-                            mat.emissiveIntensity =
-                                intensity;
-                        }
-                    });
+                if (!needle) {
+                    continue;
                 }
 
+                const compassPos =
+                    new THREE.Vector3();
+
+                obj.getWorldPosition(
+                    compassPos
+                );
+
+                let targetAngle = 0;
+
+                let strongestField = 0;
+
                 // =====================================
-                // COMPASS MAGNETIC RESPONSE
+                // FIND STRONGEST COIL
                 // =====================================
 
-                if (
-                    obj.userData.componentType ===
-                    "compass"
-                ) {
+                for (const other of draggableObjectsRef.current) {
 
-                    const needle =
-                        obj.userData.needle;
+                    if (
+                        other.userData.componentType !==
+                        "coil"
+                    ) {
+                        continue;
+                    }
 
-                    if (!needle) return;
+                    const strength =
+                        other.userData
+                            .magneticStrength || 0;
 
-                    let strongestField = 0;
+                    if (strength <= 0) {
+                        continue;
+                    }
 
-                    let targetRotation = 0;
-
-                    const compassPos =
+                    const coilPos =
                         new THREE.Vector3();
 
-                    obj.getWorldPosition(
-                        compassPos
+                    other.getWorldPosition(
+                        coilPos
                     );
 
-                    draggableObjectsRef.current.forEach(
-                        (other) => {
+                    const dx =
+                        coilPos.x -
+                        compassPos.x;
 
-                            if (
-                                other.userData.componentType !==
-                                "coil"
-                            ) {
-                                return;
-                            }
+                    const dz =
+                        coilPos.z -
+                        compassPos.z;
 
-                            if (
-                                !other.userData.isPowered
-                            ) {
-                                return;
-                            }
+                    const distance =
+                        Math.sqrt(
+                            dx * dx +
+                            dz * dz
+                        );
 
-                            const coilPos =
-                                new THREE.Vector3();
+                    // Ignore far away coils
+                    if (distance > 10) {
+                        continue;
+                    }
 
-                            other.getWorldPosition(
-                                coilPos
+                    // Field falloff
+                    const field =
+                        strength /
+                        (distance * distance);
+
+                    if (
+                        field >
+                        strongestField
+                    ) {
+
+                        strongestField =
+                            field;
+
+                        targetAngle =
+                            Math.atan2(
+                                dz,
+                                dx
                             );
+                    }
+                }
 
-                            const dx =
-                                coilPos.x -
-                                compassPos.x;
+                // =====================================
+                // SMOOTH ROTATION
+                // =====================================
 
-                            const dz =
-                                coilPos.z -
-                                compassPos.z;
-
-                            const distance =
-                                Math.sqrt(
-                                    dx * dx +
-                                    dz * dz
-                                );
-
-                            // =====================================
-                            // MAGNETIC RANGE
-                            // =====================================
-
-                            const range = 10;
-
-                            if (distance > range) {
-                                return;
-                            }
-
-                            // =====================================
-                            // FIELD STRENGTH
-                            // =====================================
-
-                            const current =
-                                other.userData.current || 0;
-
-                            const strength =
-                                current /
-                                Math.max(distance, 0.4);
-
-                            if (
-                                strength >
-                                strongestField
-                            ) {
-
-                                strongestField =
-                                    strength;
-
-                                // Point toward coil
-                                targetRotation =
-                                    Math.atan2(
-                                        dx,
-                                        dz
-                                    );
-                            }
-                        }
+                const delta =
+                    Math.atan2(
+                        Math.sin(
+                            targetAngle -
+                            needle.rotation.y
+                        ),
+                        Math.cos(
+                            targetAngle -
+                            needle.rotation.y
+                        )
                     );
 
-                    // =====================================
-                    // SMOOTH ROTATION
-                    // =====================================
-
-                    needle.rotation.y +=
-                        (
-                            targetRotation -
-                            needle.rotation.y
-                        ) * 0.08;
-                }
+                needle.rotation.y +=
+                    delta * 0.08;
             }
-        );
+        }
+        ;
 
     };
     const updateMeterDisplays = () => {

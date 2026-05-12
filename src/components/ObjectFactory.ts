@@ -340,90 +340,82 @@ export function createObject(
     // COMPASS MODEL
     // =================================================
     else if (type === "compass") {
+
         const compassGroup =
             new THREE.Group();
+
         compassGroup.userData.terminals =
             [];
 
-        // =========================================
-        // BASE
-        // =========================================
-        const base = new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                1.4,
-                1.4,
-                0.28,
-                64
-            ),
-            new THREE.MeshStandardMaterial({
-                color: "#f8fafc",
-                roughness: 0.7,
-                metalness: 0.15,
-            })
-        );
+        compassGroup.userData.componentType =
+            "compass";
 
-        base.castShadow = true;
+        // =====================================
+        // BASE
+        // =====================================
+
+        const base =
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(
+                    1.2,
+                    1.2,
+                    0.25,
+                    48
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: "#f8fafc",
+                    roughness: 0.7,
+                    metalness: 0.1,
+                })
+            );
+
         base.receiveShadow = true;
 
         compassGroup.add(base);
 
-        // =========================================
+        // =====================================
         // OUTER RING
-        // =========================================
-        const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(
-                1.35,
-                0.08,
-                16,
-                64
-            ),
-            new THREE.MeshStandardMaterial({
-                color: "#94a3b8",
-                metalness: 1,
-                roughness: 0.25,
-            })
-        );
+        // =====================================
 
-        ring.rotation.x = Math.PI / 2;
-        ring.position.y = 0.15;
+        const ring =
+            new THREE.Mesh(
+                new THREE.TorusGeometry(
+                    1.15,
+                    0.06,
+                    16,
+                    64
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: "#94a3b8",
+                    metalness: 1,
+                    roughness: 0.2,
+                })
+            );
+
+        ring.rotation.x =
+            Math.PI / 2;
+
+        ring.position.y = 0.12;
 
         compassGroup.add(ring);
 
-        // =========================================
-        // COMPASS FACE
-        // =========================================
-        const face = new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                1.18,
-                1.18,
-                0.02,
-                64
-            ),
-            new THREE.MeshStandardMaterial({
-                color: "#ffffff",
-                roughness: 0.9,
-                metalness: 0,
-            })
-        );
-
-        face.position.y = 0.16;
-
-        compassGroup.add(face);
-
-        // =========================================
+        // =====================================
         // NEEDLE GROUP
-        // IMPORTANT:
-        // Rotate THIS GROUP later
-        // =========================================
+        // THIS ROTATES
+        // =====================================
+
         const needleGroup =
             new THREE.Group();
-        needleGroup.userData.terminals =
-            [];
 
-        needleGroup.position.y = 0.2;
+        needleGroup.position.y = 0.18;
 
-        // North needle
-        const northNeedle =
+        compassGroup.add(needleGroup);
+
+        // =====================================
+        // NORTH ARROW
+        // =====================================
+
+        const northArrow =
             new THREE.Mesh(
                 new THREE.ConeGeometry(
                     0.12,
@@ -433,19 +425,21 @@ export function createObject(
                 new THREE.MeshStandardMaterial({
                     color: "#ef4444",
                     emissive: "#7f1d1d",
-                    roughness: 0.35,
                 })
             );
 
-        northNeedle.rotation.z =
+        northArrow.rotation.z =
             -Math.PI / 2;
 
-        northNeedle.position.x = 0.42;
+        northArrow.position.x = 0.45;
 
-        needleGroup.add(northNeedle);
+        needleGroup.add(northArrow);
 
-        // South needle
-        const southNeedle =
+        // =====================================
+        // SOUTH ARROW
+        // =====================================
+
+        const southArrow =
             new THREE.Mesh(
                 new THREE.ConeGeometry(
                     0.12,
@@ -454,21 +448,21 @@ export function createObject(
                 ),
                 new THREE.MeshStandardMaterial({
                     color: "#e2e8f0",
-                    roughness: 0.35,
                 })
             );
 
-        southNeedle.rotation.z =
+        southArrow.rotation.z =
             Math.PI / 2;
 
-        southNeedle.position.x = -0.42;
+        southArrow.position.x = -0.45;
 
-        needleGroup.add(southNeedle);
+        needleGroup.add(southArrow);
 
-        // =========================================
+        // =====================================
         // CENTER PIN
-        // =========================================
-        const centerPin =
+        // =====================================
+
+        const pin =
             new THREE.Mesh(
                 new THREE.SphereGeometry(
                     0.08,
@@ -477,314 +471,134 @@ export function createObject(
                 ),
                 new THREE.MeshStandardMaterial({
                     color: "#fbbf24",
-                    emissive: "#78350f",
                     metalness: 1,
                     roughness: 0.2,
                 })
             );
 
-        centerPin.position.y = 0.01;
+        pin.position.y = 0.02;
 
-        needleGroup.add(centerPin);
+        needleGroup.add(pin);
 
-        compassGroup.add(needleGroup);
+        // =====================================
+        // SAVE NEEDLE GROUP
+        // =====================================
 
-        // =========================================
-        // GLASS COVER
-        // =========================================
-        const glass = new THREE.Mesh(
-            new THREE.SphereGeometry(
-                1.22,
-                32,
-                32,
-                0,
-                Math.PI * 2,
-                0,
-                Math.PI / 2
-            ),
-            new THREE.MeshPhysicalMaterial({
-                color: "#ffffff",
-                transparent: true,
-                opacity: 0.22,
-                roughness: 0,
-                transmission: 1,
-                thickness: 0.3,
-                metalness: 0,
-            })
-        );
-
-        glass.position.y = 0.18;
-
-        compassGroup.add(glass);
-
-        // =========================================
-        // CARDINAL MARKERS
-        // =========================================
-        const markerMaterial =
-            new THREE.MeshStandardMaterial({
-                color: "#334155",
-            });
-
-        const northMarker =
-            new THREE.Mesh(
-                new THREE.BoxGeometry(
-                    0.08,
-                    0.02,
-                    0.24
-                ),
-                markerMaterial
-            );
-
-        northMarker.position.set(
-            0,
-            0.17,
-            -0.9
-        );
-
-        compassGroup.add(northMarker);
-
-        const southMarker =
-            northMarker.clone();
-
-        southMarker.position.z = 0.9;
-
-        compassGroup.add(southMarker);
-
-        const eastMarker =
-            new THREE.Mesh(
-                new THREE.BoxGeometry(
-                    0.24,
-                    0.02,
-                    0.08
-                ),
-                markerMaterial
-            );
-
-        eastMarker.position.set(
-            0.9,
-            0.17,
-            0
-        );
-
-        compassGroup.add(eastMarker);
-
-        const westMarker =
-            eastMarker.clone();
-
-        westMarker.position.x = -0.9;
-
-        compassGroup.add(westMarker);
-
-        // =========================================
-        // SAVE NEEDLE REFERENCE
-        // VERY IMPORTANT
-        // =========================================
         compassGroup.userData.needle =
             needleGroup;
 
         object = compassGroup;
     }
     else if (type === "coil") {
-        const coilGroup = new THREE.Group();
-        coilGroup.userData.terminals =
-            [];
-        coilGroup.userData.resistance = 15;
 
-        // =========================================
+        const coilGroup =
+            new THREE.Group();
+
+        // =====================================
+        // COMPONENT DATA
+        // =====================================
+
+        coilGroup.userData.componentType =
+            "coil";
+
+        coilGroup.userData.terminals = [];
+
+        coilGroup.userData.resistance = 12;
+
+        coilGroup.userData.current = 0;
+
+        coilGroup.userData.power = 0;
+
+        coilGroup.userData.isPowered = false;
+
+        coilGroup.userData.magneticStrength = 0;
+
+        // =====================================
         // IRON CORE
-        // =========================================
-        const core = new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                0.28,
-                0.28,
-                4,
-                32
-            ),
-            new THREE.MeshStandardMaterial({
-                color: "#9ca3af",
-                metalness: 1,
-                roughness: 0.25,
-            })
-        );
+        // =====================================
 
-        core.rotation.z = Math.PI / 2;
+        const core =
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(
+                    0.22,
+                    0.22,
+                    4,
+                    32
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: "#9ca3af",
+                    metalness: 1,
+                    roughness: 0.25,
+                })
+            );
+
+        core.rotation.z =
+            Math.PI / 2;
 
         core.castShadow = true;
 
         coilGroup.add(core);
 
-        // =========================================
-        // COPPER COIL WRAPS
-        // =========================================
-        for (let i = 0; i < 14; i++) {
-            const wrap = new THREE.Mesh(
-                new THREE.TorusGeometry(
-                    0.55,
-                    0.06,
-                    12,
-                    32
-                ),
-                new THREE.MeshStandardMaterial({
-                    color: "#fb923c",
-                    metalness: 1,
-                    roughness: 0.2,
-                    emissive: "#552200",
-                })
-            );
+        // =====================================
+        // COPPER WRAPS
+        // =====================================
 
-            wrap.rotation.y = Math.PI / 2;
+        const wraps: THREE.Mesh[] = [];
+
+        for (let i = 0; i < 15; i++) {
+
+            const wrap =
+                new THREE.Mesh(
+                    new THREE.TorusGeometry(
+                        0.5,
+                        0.05,
+                        12,
+                        32
+                    ),
+                    new THREE.MeshStandardMaterial({
+                        color: "#fb923c",
+                        emissive: "#000000",
+                        emissiveIntensity: 0,
+                        metalness: 1,
+                        roughness: 0.2,
+                    })
+                );
+
+            wrap.rotation.y =
+                Math.PI / 2;
 
             wrap.position.x =
-                -1.4 + i * 0.22;
+                -1.5 + i * 0.21;
 
             wrap.castShadow = true;
 
             coilGroup.add(wrap);
+
+            wraps.push(wrap);
         }
 
-        // =========================================
-        // WIRE LEADS
-        // =========================================
+        coilGroup.userData.wraps =
+            wraps;
 
-        // Left wire
-        const leftWire = new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                0.04,
-                0.04,
-                1.2,
-                8
-            ),
-            new THREE.MeshStandardMaterial({
-                color: "#f97316",
-                metalness: 0.8,
-                roughness: 0.3,
-            })
-        );
+        // =====================================
+        // LEFT TERMINAL
+        // =====================================
 
-        leftWire.rotation.z =
-            Math.PI / 2.5;
-
-        leftWire.position.set(
-            -2.2,
-            0.12,
-            0
-        );
-
-        coilGroup.add(leftWire);
-
-        // Right wire
-        const rightWire =
-            new THREE.Mesh(
-                new THREE.CylinderGeometry(
-                    0.04,
-                    0.04,
-                    1.2,
-                    8
-                ),
-                new THREE.MeshStandardMaterial({
-                    color: "#f97316",
-                    metalness: 0.8,
-                    roughness: 0.3,
-                })
-            );
-
-        rightWire.rotation.z =
-            -Math.PI / 2.5;
-
-        rightWire.position.set(
-            2.2,
-            0.12,
-            0
-        );
-
-        coilGroup.add(rightWire);
-
-        // =========================================
-        // MAGNETIC FIELD GLOW
-        // =========================================
-        const fieldGlow =
-            new THREE.Mesh(
-                new THREE.TorusGeometry(
-                    1.5,
-                    0.03,
-                    12,
-                    64
-                ),
-                new THREE.MeshBasicMaterial({
-                    color: "#60a5fa",
-                    transparent: true,
-                    opacity: 0.25,
-                })
-            );
-
-        fieldGlow.rotation.y =
-            Math.PI / 2;
-
-        coilGroup.add(fieldGlow);
-        coilGroup.userData.fieldGlow =
-            fieldGlow;
-        coilGroup.userData.fieldGlow =
-            fieldGlow;
-
-        // =========================================
-        // END CAPS
-        // =========================================
-        const capMaterial =
-            new THREE.MeshStandardMaterial({
-                color: "#d1d5db",
-                metalness: 1,
-                roughness: 0.2,
-            });
-
-        const leftCap = new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                0.35,
-                0.35,
-                0.08,
-                24
-            ),
-            capMaterial
-        );
-
-        leftCap.rotation.z =
-            Math.PI / 2;
-
-        leftCap.position.x = -2;
-
-        coilGroup.add(leftCap);
-
-        const rightCap =
-            new THREE.Mesh(
-                new THREE.CylinderGeometry(
-                    0.35,
-                    0.35,
-                    0.08,
-                    24
-                ),
-                capMaterial
-            );
-
-        rightCap.rotation.z =
-            Math.PI / 2;
-
-        rightCap.position.x = 2;
-
-        coilGroup.add(rightCap);
-
-        // =========================================
-        // TERMINALS
-        // =========================================
         const leftTerminal =
             createTerminal(
                 coilGroup,
                 "input",
                 "#f97316",
                 new THREE.Vector3(
-                    -2.5,
-                    0.12,
+                    -2.4,
+                    0,
                     0
                 )
             );
+
+        // =====================================
+        // RIGHT TERMINAL
+        // =====================================
 
         const rightTerminal =
             createTerminal(
@@ -792,8 +606,8 @@ export function createObject(
                 "output",
                 "#f97316",
                 new THREE.Vector3(
-                    2.5,
-                    0.12,
+                    2.4,
+                    0,
                     0
                 )
             );
@@ -802,6 +616,32 @@ export function createObject(
             leftTerminal,
             rightTerminal,
         ];
+
+        // =====================================
+        // MAGNETIC FIELD GLOW
+        // =====================================
+
+        const fieldGlow =
+            new THREE.Mesh(
+                new THREE.SphereGeometry(
+                    2.4,
+                    32,
+                    32
+                ),
+                new THREE.MeshBasicMaterial({
+                    color: "#60a5fa",
+                    transparent: true,
+                    opacity: 0,
+                    wireframe: true,
+                })
+            );
+
+        fieldGlow.visible = false;
+
+        coilGroup.add(fieldGlow);
+
+        coilGroup.userData.fieldGlow =
+            fieldGlow;
 
         object = coilGroup;
     }
@@ -2083,6 +1923,13 @@ export function createObject(
             new THREE.Group();
         thermoGroup.userData.terminals =
             [];
+        thermoGroup.userData.componentType =
+            "thermometer";
+        thermoGroup.userData.temperature =
+            20;
+
+        thermoGroup.userData.targetTemperature =
+            20;
 
 
         // =========================================
@@ -2147,6 +1994,8 @@ export function createObject(
                     emissiveIntensity: 0.35,
                 })
             );
+        thermoGroup.userData.mercury =
+            bulb;
 
         bulb.position.x = -2;
 
@@ -2175,9 +2024,40 @@ export function createObject(
         mercury.rotation.z =
             Math.PI / 2;
 
-        mercury.position.x = -0.55;
+        mercury.position.x = -0.2;
 
         thermoGroup.add(mercury);
+
+        // =========================================
+        // FIXED MERCURY BASE
+        // =========================================
+
+        const mercuryBase =
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(
+                    0.08,
+                    0.08,
+                    2,
+                    24
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: "#ef4444",
+                    emissive: "#7f1d1d",
+                    emissiveIntensity: 0.4,
+                })
+            );
+
+        mercuryBase.rotation.z =
+            Math.PI / 2;
+
+        // Fixed at bulb side
+        mercuryBase.position.x =
+            -1;
+
+
+        thermoGroup.add(
+            mercuryBase
+        );
 
         // IMPORTANT reference
         thermoGroup.userData.mercury =
@@ -2267,6 +2147,7 @@ export function createObject(
 
         object = thermoGroup;
     }
+
 
     // =================================================
     // Placement
