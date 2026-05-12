@@ -711,6 +711,8 @@ export function ThreeSceneLesson23() {
 
             obj.userData.current =
                 current;
+            obj.userData.power =
+                power;
 
             // =====================================
             // ELECTROMAGNET STATE
