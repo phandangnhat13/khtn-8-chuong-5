@@ -1,0 +1,1825 @@
+import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
+
+import {
+    ChevronRight,
+    Box,
+    Cylinder,
+    Circle,
+} from "lucide-react";
+import { createObject } from "./ObjectFactory";
+import { SpawnType } from "./Types";
+
+const getInternalConnections = (
+    obj: THREE.Object3D
+) => {
+    // Voltmeters should NOT internally short
+    if (
+        obj.userData.componentType ===
+        "voltmeter"
+    ) {
+        return [];
+    }
+
+    const terminals =
+        obj.userData.terminals;
+
+    if (
+        !terminals ||
+        terminals.length < 2
+    ) {
+        return [];
+    }
+    // =====================================
+    // BATTERIES DO NOT INTERNALLY CONNECT
+    // =====================================
+
+    if (
+        obj.userData.componentType ===
+        "battery"
+    ) {
+        return [];
+    }
+    // Switch special case
+    if (
+        obj.userData.arm &&
+        !obj.userData.isClosed
+    ) {
+        return [];
+    }
+
+    return [
+        [terminals[0], terminals[1]],
+        [terminals[1], terminals[0]],
+    ];
+};
+
+export function ThreeSceneLesson23() {
+    const mountRef =
+        useRef<HTMLDivElement>(null);
+
+    const sceneRef =
+        useRef<THREE.Scene | null>(null);
+
+    const cameraRef =
+        useRef<THREE.PerspectiveCamera | null>(
+            null
+        );
+
+    const rendererRef =
+        useRef<THREE.WebGLRenderer | null>(
+            null
+        );
+
+    const groundRef =
+        useRef<THREE.Mesh | null>(null);
+
+    const raycasterRef = useRef(
+        new THREE.Raycaster()
+    );
+
+    const mouseRef = useRef(
+        new THREE.Vector2()
+    );
+
+    const draggableObjectsRef = useRef<
+        THREE.Object3D[]
+    >([]);
+
+    const draggedObjectRef =
+        useRef<THREE.Object3D | null>(null);
+
+    const dragOffsetRef = useRef(
+        new THREE.Vector3()
+    );
+
+    const pointerDownPosRef =
+        useRef({
+            x: 0,
+            y: 0,
+        });
+
+    // ============================================
+    // TERMINAL INTERACTION
+    // ============================================
+
+    // All terminals in scene
+    const terminalObjectsRef =
+        useRef<THREE.Object3D[]>([]);
+
+    // Currently selected terminal
+    const selectedTerminalRef =
+        useRef<THREE.Object3D | null>(
+            null
+        );
+
+    // All wires
+    const activeTerminalsRef =
+        useRef<
+            Set<THREE.Object3D>
+        >(new Set());
+    const wiresRef =
+        useRef<any[]>([]);
+
+    const [menuOpen, setMenuOpen] =
+        useState(true);
+
+    const spawnObject = (
+        type: SpawnType
+    ) => {
+
+        const scene =
+            sceneRef.current;
+
+        if (!scene) return;
+
+        const object =
+            createObject(type);
+
+        object.position.set(
+            (Math.random() - 0.5) * 10,
+            0,
+            (Math.random() - 0.5) * 10
+        );
+
+        scene.add(object);
+
+        draggableObjectsRef.current.push(
+            object
+        );
+
+        // ============================================
+        // REGISTER TERMINALS
+        // ============================================
+        object.traverse((child) => {
+
+            if (
+                child.userData.isTerminal
+            ) {
+
+                terminalObjectsRef.current.push(
+                    child
+                );
+            }
+        });
+    };
+
+    const createWire = (
+        startTerminal: THREE.Object3D,
+        endTerminal: THREE.Object3D
+    ) => {
+
+        const scene =
+            sceneRef.current;
+
+        if (!scene) return;
+
+        const start =
+            new THREE.Vector3();
+
+        const end =
+            new THREE.Vector3();
+
+        startTerminal.getWorldPosition(
+            start
+        );
+
+        endTerminal.getWorldPosition(
+            end
+        );
+
+        const points = [
+            start,
+            end,
+        ];
+
+        const geometry =
+            new THREE.BufferGeometry()
+                .setFromPoints(points);
+
+        const material =
+            new THREE.LineBasicMaterial({
+                color: "#111111",
+            });
+
+        const line =
+            new THREE.Line(
+                geometry,
+                material
+            );
+
+        scene.add(line);
+
+        // =====================================
+        // CURRENT PARTICLE
+        // =====================================
+
+        const particle =
+            new THREE.Mesh(
+                new THREE.SphereGeometry(
+                    0.08,
+                    12,
+                    12
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: "#facc15",
+                    emissive: "#facc15",
+                    emissiveIntensity: 2,
+                })
+            );
+
+        particle.visible = false;
+
+        scene.add(particle);
+
+        wiresRef.current.push({
+            from: startTerminal,
+            to: endTerminal,
+            line,
+            geometry,
+            particle,
+            progress: Math.random(),
+        });
+    };
+
+    const handleTerminalClick = (
+        terminal: THREE.Object3D
+    ) => {
+
+        // First click
+        if (
+            !selectedTerminalRef.current
+        ) {
+
+            selectedTerminalRef.current =
+                terminal;
+
+            // Highlight selected
+            const material =
+                terminal.material as THREE.MeshStandardMaterial;
+
+            material.emissive.set(
+                "#ffff00"
+            );
+
+            return;
+        }
+
+        // Same terminal clicked
+        if (
+            selectedTerminalRef.current ===
+            terminal
+        ) {
+            return;
+        }
+
+        // Create wire
+        createWire(
+            selectedTerminalRef.current,
+            terminal
+        );
+
+        // Remove highlight
+        const previousMaterial =
+            selectedTerminalRef.current
+                .material as THREE.MeshStandardMaterial;
+
+        previousMaterial.emissive.set(
+            "#000000"
+        );
+
+        selectedTerminalRef.current =
+            null;
+    };
+
+    const updateWires = () => {
+
+        wiresRef.current.forEach(
+            (wire) => {
+
+                const start =
+                    new THREE.Vector3();
+
+                const end =
+                    new THREE.Vector3();
+
+                wire.from.getWorldPosition(
+                    start
+                );
+
+                wire.to.getWorldPosition(
+                    end
+                );
+
+                // =====================================
+                // UPDATE WIRE LINE
+                // =====================================
+
+                wire.geometry.setFromPoints([
+                    start,
+                    end,
+                ]);
+
+                // =====================================
+                // CURRENT FLOW ANIMATION
+                // =====================================
+
+                const powered =
+                    isWirePowered(wire);
+
+                wire.particle.visible =
+                    powered;
+
+                if (!powered) return;
+
+                // Animate progress
+                wire.progress += 0.01;
+
+                if (wire.progress > 1) {
+                    wire.progress = 0;
+                }
+
+                // Interpolate position
+                const position =
+                    new THREE.Vector3().lerpVectors(
+                        start,
+                        end,
+                        wire.progress
+                    );
+
+                wire.particle.position.copy(
+                    position
+                );
+            }
+        );
+    };
+
+    const getConnectedTerminalsDeep = (
+        terminal: THREE.Object3D
+    ) => {
+
+        const connected: THREE.Object3D[] =
+            [];
+
+        // =====================================
+        // WIRE CONNECTIONS
+        // =====================================
+
+        wiresRef.current.forEach(
+            (wire) => {
+
+                if (
+                    wire.from === terminal
+                ) {
+                    connected.push(
+                        wire.to
+                    );
+                }
+
+                if (
+                    wire.to === terminal
+                ) {
+                    connected.push(
+                        wire.from
+                    );
+                }
+            }
+        );
+
+        // =====================================
+        // INTERNAL COMPONENT FLOW
+        // =====================================
+
+        const owner =
+            terminal.userData.owner;
+
+        if (owner) {
+
+            const internals =
+                getInternalConnections(
+                    owner
+                );
+
+            internals.forEach(
+                ([a, b]: any) => {
+
+                    if (a === terminal) {
+                        connected.push(b);
+                    }
+                }
+            );
+        }
+
+        return connected;
+    };
+
+    const canReachNegativeTerminal = (
+        currentTerminal: THREE.Object3D,
+        targetTerminal: THREE.Object3D,
+        visited = new Set<THREE.Object3D>(),
+        usedExternalWire = false
+    ): boolean => {
+
+        // Already visited
+        if (
+            visited.has(currentTerminal)
+        ) {
+            return false;
+        }
+
+        visited.add(currentTerminal);
+
+        // =====================================
+        // SUCCESS
+        // =====================================
+
+        if (
+            currentTerminal === targetTerminal
+        ) {
+
+            // Must include at least one wire
+            if (!usedExternalWire) {
+                return false;
+            }
+
+            return true;
+        }
+        // =====================================
+        // NEIGHBORS
+        // =====================================
+
+        const neighbors =
+            getConnectedTerminalsDeep(
+                currentTerminal
+            );
+
+        for (const next of neighbors) {
+
+            const owner =
+                next.userData.owner;
+
+            // Open switch blocks current
+            if (
+                owner?.userData.arm &&
+                !owner.userData.isClosed
+            ) {
+                continue;
+            }
+
+            // =====================================
+            // DETECT WIRE TRAVERSAL
+            // =====================================
+
+            let nextUsedExternalWire =
+                usedExternalWire;
+
+            const isWireConnection =
+                wiresRef.current.some(
+                    (wire) =>
+                        (
+                            wire.from === currentTerminal &&
+                            wire.to === next
+                        ) ||
+                        (
+                            wire.to === currentTerminal &&
+                            wire.from === next
+                        )
+                );
+
+            if (isWireConnection) {
+                nextUsedExternalWire =
+                    true;
+            }
+
+            // =====================================
+            // DFS
+            // =====================================
+
+            if (
+                canReachNegativeTerminal(
+                    next,
+                    targetTerminal,
+                    visited,
+                    nextUsedExternalWire
+                )
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    const checkCircuit = () => {
+        activeTerminalsRef.current.clear();
+        draggableObjectsRef.current.forEach(
+            (obj) => {
+
+                obj.userData.isPowered =
+                    false;
+            }
+        );
+
+        const objects =
+            draggableObjectsRef.current;
+
+        objects.forEach((obj) => {
+
+            // =====================================
+            // Find batteries
+            // =====================================
+
+            // ONLY batteries can power circuits
+            if (
+                obj.userData.componentType !==
+                "battery"
+            ) {
+                return;
+            }
+            const terminals =
+                obj.userData.terminals;
+
+            if (!terminals) return;
+
+            const positive =
+                terminals.find(
+                    (t: any) =>
+                        t.userData
+                            .terminalId ===
+                        "positive"
+                );
+
+            const negative =
+                terminals.find(
+                    (t: any) =>
+                        t.userData
+                            .terminalId ===
+                        "negative"
+                );
+
+            if (
+                positive &&
+                negative
+            ) {
+
+                const visited =
+                    new Set<THREE.Object3D>();
+
+                const closed =
+                    canReachNegativeTerminal(
+                        positive,
+                        negative,
+                        visited
+                    );
+
+                if (closed) {
+
+                    visited.forEach((terminal) => {
+
+                        activeTerminalsRef.current.add(
+                            terminal
+                        );
+
+                        const owner =
+                            terminal.userData.owner;
+
+                        if (owner) {
+                            owner.userData.isPowered =
+                                true;
+                        }
+                    });
+                }
+
+                obj.userData.isPowered =
+                    closed;
+
+                console.log(
+                    "Circuit closed:",
+                    closed
+                );
+
+            }
+        });
+    };
+    const getActiveComponents = () => {
+
+        const active =
+            new Set<THREE.Object3D>();
+
+        activeTerminalsRef.current.forEach(
+            (terminal) => {
+
+                const owner =
+                    terminal.userData.owner;
+
+                if (owner) {
+                    active.add(owner);
+                }
+            }
+        );
+
+        return Array.from(active);
+    };
+    const solveCircuit = () => {
+
+        const active =
+            getActiveComponents();
+
+        // Reset
+        active.forEach((obj) => {
+
+            obj.userData.current = 0;
+            obj.userData.power = 0;
+        });
+
+
+        // =====================================
+        // Find battery
+        // =====================================
+
+        const battery =
+            active.find(
+                (o) =>
+                    o.userData.voltage
+            );
+
+        if (
+            !battery ||
+            !battery.userData.isPowered
+        ) {
+            return;
+        }
+
+        // =====================================
+        // Total Resistance
+        // =====================================
+
+        let totalResistance = 0;
+
+        active.forEach((obj) => {
+
+            totalResistance +=
+                obj.userData.resistance || 0;
+        });
+
+        if (
+            totalResistance <= 0
+        ) {
+            return;
+        }
+
+        // =====================================
+        // Ohm's Law
+        // =====================================
+
+        const voltage =
+            battery.userData.voltage;
+
+        const current =
+            voltage /
+            totalResistance;
+
+
+        // =====================================
+        // Apply To Components
+        // =====================================
+
+
+        active.forEach((obj) => {
+            // Not powered
+            if (
+                !obj.userData.isPowered &&
+                obj.userData.componentType !== "battery"
+            ) {
+
+                obj.userData.current = 0;
+                obj.userData.power = 0;
+                obj.userData.voltageDrop = 0;
+
+                return;
+            }
+
+            const resistance =
+                obj.userData.resistance || 0;
+
+            const power =
+                current *
+                current *
+                resistance;
+
+            obj.userData.current =
+                current;
+
+            obj.userData.power =
+                power;
+
+            // =====================================
+            // VOLTAGE DROP
+            // =====================================
+
+            obj.userData.voltageDrop =
+                current *
+                resistance;
+        });
+    };
+    const updateVisualEffects = () => {
+
+
+        draggableObjectsRef.current.forEach(
+            (obj) => {
+
+                // =====================================
+                // LIGHTBULB
+                // =====================================
+
+                if (
+                    obj.userData.componentType ===
+                    "lightbulb"
+                ) {
+
+                    const glow =
+                        obj.userData.glowMesh;
+                    const hotCore =
+                        obj.userData.hotCore;
+
+                    if (!glow) return;
+
+                    const power =
+                        obj.userData.power || 0;
+
+                    // Scale brightness
+                    const intensity =
+                        Math.min(
+                            power * 40,
+                            10
+                        );
+
+                    const material =
+                        glow.material as THREE.MeshStandardMaterial;
+
+                    // Emissive glow
+                    material.emissive.set(
+                        "#ffd966"
+                    );
+
+                    material.emissiveIntensity =
+                        intensity;
+
+                    // Transparency
+                    material.transparent =
+                        true;
+
+                    material.opacity =
+                        0.08 +
+                        intensity * 0.08;
+                    // =====================================
+                    // HOT CORE
+                    // =====================================
+
+                    if (hotCore) {
+
+                        const hotMaterial =
+                            hotCore.material as THREE.MeshBasicMaterial;
+
+                        hotMaterial.opacity =
+                            Math.min(
+                                power * 1.4,
+                                1
+                            );
+
+                        hotCore.scale.setScalar(
+                            1 +
+                            power * 0.25
+                        );
+                    }
+                    const filament =
+                        obj.userData.filament;
+
+                    if (filament) {
+
+                        const filamentMat =
+                            filament.material as THREE.MeshStandardMaterial;
+
+                        filamentMat.emissive.set(
+                            "#ffcc66"
+                        );
+
+                        filamentMat.emissiveIntensity =
+                            intensity * 2;
+                    }
+                }
+                // =====================================
+                // ELECTROMAGNETIC COIL
+                // =====================================
+
+                if (
+                    obj.userData.componentType ===
+                    "coil"
+                ) {
+
+                    const glow =
+                        obj.userData.fieldGlow;
+
+                    if (!glow) return;
+
+                    const powered =
+                        obj.userData.isPowered;
+
+                    const current =
+                        obj.userData.current || 0;
+
+                    const intensity =
+                        powered
+                            ? Math.min(
+                                current * 8,
+                                4
+                            )
+                            : 0;
+
+                    const material =
+                        glow.material as THREE.MeshBasicMaterial;
+
+                    // =====================================
+                    // GLOW VISIBILITY
+                    // =====================================
+
+                    material.opacity =
+                        0.08 + intensity * 0.15;
+
+                    glow.visible = powered;
+
+                    // =====================================
+                    // PULSE ANIMATION
+                    // =====================================
+
+                    const pulse =
+                        1 +
+                        Math.sin(
+                            performance.now() * 0.005
+                        ) * 0.12;
+
+                    glow.scale.set(
+                        pulse,
+                        pulse,
+                        pulse
+                    );
+
+                    // =====================================
+                    // ROTATION
+                    // =====================================
+
+                    glow.rotation.z += 0.01;
+
+                    // =====================================
+                    // COIL WRAP EMISSION
+                    // =====================================
+
+                    obj.traverse((child) => {
+
+                        if (
+                            child instanceof THREE.Mesh &&
+                            child.geometry instanceof THREE.TorusGeometry
+                        ) {
+
+                            const mat =
+                                child.material as THREE.MeshStandardMaterial;
+
+                            mat.emissive.set(
+                                powered
+                                    ? "#60a5fa"
+                                    : "#552200"
+                            );
+
+                            mat.emissiveIntensity =
+                                intensity;
+                        }
+                    });
+                }
+
+                // =====================================
+                // COMPASS MAGNETIC RESPONSE
+                // =====================================
+
+                if (
+                    obj.userData.componentType ===
+                    "compass"
+                ) {
+
+                    const needle =
+                        obj.userData.needle;
+
+                    if (!needle) return;
+
+                    let strongestField = 0;
+
+                    let targetRotation = 0;
+
+                    const compassPos =
+                        new THREE.Vector3();
+
+                    obj.getWorldPosition(
+                        compassPos
+                    );
+
+                    draggableObjectsRef.current.forEach(
+                        (other) => {
+
+                            if (
+                                other.userData.componentType !==
+                                "coil"
+                            ) {
+                                return;
+                            }
+
+                            if (
+                                !other.userData.isPowered
+                            ) {
+                                return;
+                            }
+
+                            const coilPos =
+                                new THREE.Vector3();
+
+                            other.getWorldPosition(
+                                coilPos
+                            );
+
+                            const dx =
+                                coilPos.x -
+                                compassPos.x;
+
+                            const dz =
+                                coilPos.z -
+                                compassPos.z;
+
+                            const distance =
+                                Math.sqrt(
+                                    dx * dx +
+                                    dz * dz
+                                );
+
+                            // =====================================
+                            // MAGNETIC RANGE
+                            // =====================================
+
+                            const range = 10;
+
+                            if (distance > range) {
+                                return;
+                            }
+
+                            // =====================================
+                            // FIELD STRENGTH
+                            // =====================================
+
+                            const current =
+                                other.userData.current || 0;
+
+                            const strength =
+                                current /
+                                Math.max(distance, 0.4);
+
+                            if (
+                                strength >
+                                strongestField
+                            ) {
+
+                                strongestField =
+                                    strength;
+
+                                // Point toward coil
+                                targetRotation =
+                                    Math.atan2(
+                                        dx,
+                                        dz
+                                    );
+                            }
+                        }
+                    );
+
+                    // =====================================
+                    // SMOOTH ROTATION
+                    // =====================================
+
+                    needle.rotation.y +=
+                        (
+                            targetRotation -
+                            needle.rotation.y
+                        ) * 0.08;
+                }
+            }
+        );
+
+    };
+    const updateMeterDisplays = () => {
+
+        draggableObjectsRef.current.forEach(
+            (obj) => {
+
+                const type =
+                    obj.userData.componentType;
+
+                if (
+                    type !== "ammeter" &&
+                    type !== "voltmeter"
+                ) {
+                    return;
+                }
+
+                const canvas =
+                    obj.userData.displayCanvas;
+
+                const ctx =
+                    obj.userData.displayContext;
+
+                const texture =
+                    obj.userData.displayTexture;
+
+                if (
+                    !canvas ||
+                    !ctx ||
+                    !texture
+                ) {
+                    return;
+                }
+
+                // =====================================
+                // CLEAR DISPLAY
+                // =====================================
+
+                ctx.fillStyle = "#081018";
+
+                ctx.fillRect(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+
+                // =====================================
+                // VALUE
+                // =====================================
+
+                let value = 0;
+                let unit = "";
+
+                if (type === "ammeter") {
+
+                    value =
+                        obj.userData.current || 0;
+
+                    unit = "A";
+                }
+
+                if (type === "voltmeter") {
+
+                    value =
+                        obj.userData.voltageDrop || 0;
+
+                    unit = "V";
+                }
+
+                // =====================================
+                // GLOW BACKGROUND
+                // =====================================
+
+                ctx.fillStyle =
+                    "rgba(0,255,120,0.15)";
+
+                ctx.fillRect(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+
+                // =====================================
+                // MAIN TEXT
+                // =====================================
+
+                ctx.fillStyle = "#00ff88";
+
+                ctx.font =
+                    "bold 80px monospace";
+
+                ctx.textAlign = "center";
+
+                ctx.textBaseline = "middle";
+
+                ctx.fillText(
+                    `${value.toFixed(2)} ${unit}`,
+                    canvas.width / 2,
+                    canvas.height / 2
+                );
+
+                // =====================================
+                // UPDATE TEXTURE
+                // =====================================
+
+                texture.needsUpdate =
+                    true;
+            }
+        );
+    };
+    const isWirePowered = (
+        wire: any
+    ) => {
+
+        return (
+            activeTerminalsRef.current.has(
+                wire.from
+            ) &&
+            activeTerminalsRef.current.has(
+                wire.to
+            )
+        );
+    };
+
+    // ============================================
+    // Scene Setup
+    // ============================================
+    useEffect(() => {
+        const mount = mountRef.current;
+
+        if (!mount) return;
+
+        // -------------------------
+        // Scene
+        // -------------------------
+        const scene = new THREE.Scene();
+
+        scene.background =
+            new THREE.Color("#cbd5e1");
+
+        scene.fog = new THREE.Fog(
+            "#cbd5e1",
+            25,
+            70
+        );
+
+        sceneRef.current = scene;
+
+        // -------------------------
+        // Camera
+        // -------------------------
+        const camera =
+            new THREE.PerspectiveCamera(
+                45,
+                mount.clientWidth /
+                mount.clientHeight,
+                0.1,
+                1000
+            );
+
+        // High top-down angle
+        camera.position.set(0, 24, 5);
+
+        camera.lookAt(0, 0, 0);
+
+        cameraRef.current = camera;
+
+        // -------------------------
+        // Renderer
+        // -------------------------
+        const renderer =
+            new THREE.WebGLRenderer({
+                antialias: true,
+            });
+
+        renderer.setPixelRatio(
+            Math.min(
+                window.devicePixelRatio,
+                2
+            )
+        );
+
+        renderer.setSize(
+            mount.clientWidth,
+            mount.clientHeight
+        );
+
+        renderer.shadowMap.enabled = true;
+
+        renderer.outputColorSpace =
+            THREE.SRGBColorSpace;
+
+        renderer.toneMapping =
+            THREE.ACESFilmicToneMapping;
+
+        renderer.toneMappingExposure = 1.25;
+
+        mount.appendChild(
+            renderer.domElement
+        );
+
+        rendererRef.current = renderer;
+
+        // -------------------------
+        // Lights
+        // -------------------------
+        const ambient =
+            new THREE.AmbientLight(
+                "#ffffff",
+                2.5
+            );
+
+        scene.add(ambient);
+
+        const hemi =
+            new THREE.HemisphereLight(
+                "#ffffff",
+                "#94a3b8",
+                2
+            );
+
+        scene.add(hemi);
+
+        const dirLight =
+            new THREE.DirectionalLight(
+                "#ffffff",
+                2.4
+            );
+
+        dirLight.position.set(
+            10,
+            20,
+            10
+        );
+
+        dirLight.castShadow = true;
+
+        dirLight.shadow.mapSize.width =
+            2048;
+
+        dirLight.shadow.mapSize.height =
+            2048;
+
+        scene.add(dirLight);
+
+        // -------------------------
+        // Ground
+        // -------------------------
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(
+                60,
+                60
+            ),
+            new THREE.MeshStandardMaterial({
+                color: "#63666b",
+                roughness: 0.95,
+                metalness: 0.02,
+            })
+        );
+
+        ground.rotation.x = -Math.PI / 2;
+
+        ground.receiveShadow = true;
+
+        scene.add(ground);
+
+        groundRef.current = ground;
+
+        // Grid
+        const grid =
+            new THREE.GridHelper(
+                60,
+                60,
+                "#6b7280",
+                "#9ca3af"
+            );
+
+        grid.position.y = 0.01;
+
+        scene.add(grid);
+
+        // -------------------------
+        // Mouse Helpers
+        // -------------------------
+        const updateMousePosition = (
+            event: PointerEvent
+        ) => {
+            const rect =
+                renderer.domElement.getBoundingClientRect();
+
+            mouseRef.current.x =
+                ((event.clientX - rect.left) /
+                    rect.width) *
+                2 -
+                1;
+
+            mouseRef.current.y =
+                -(
+                    (event.clientY -
+                        rect.top) /
+                    rect.height
+                ) *
+                2 +
+                1;
+        };
+
+        // -------------------------
+        // Drag Start
+        // -------------------------
+        const handlePointerDown = (
+            event: PointerEvent
+        ) => {
+            pointerDownPosRef.current = {
+                x: event.clientX,
+                y: event.clientY,
+            };
+            updateMousePosition(event);
+
+            raycasterRef.current.setFromCamera(
+                mouseRef.current,
+                camera
+            );
+
+            // ============================================
+            // TERMINAL INTERSECTION
+            // ============================================
+            const terminalHits =
+                raycasterRef.current.intersectObjects(
+                    terminalObjectsRef.current,
+                    false
+                );
+
+            if (terminalHits.length > 0) {
+
+                handleTerminalClick(
+                    terminalHits[0].object
+                );
+
+                return;
+            }
+
+            const intersects =
+                raycasterRef.current.intersectObjects(
+                    draggableObjectsRef.current,
+                    true
+                );
+
+            if (intersects.length > 0) {
+                let object =
+                    intersects[0].object;
+
+                // Find top-level draggable parent
+                while (
+                    object.parent &&
+                    !draggableObjectsRef.current.includes(
+                        object
+                    )
+                ) {
+                    object = object.parent;
+                }
+
+                draggedObjectRef.current =
+                    object;
+
+                const groundHit =
+                    raycasterRef.current.intersectObject(
+                        ground
+                    );
+
+                if (groundHit.length > 0) {
+                    dragOffsetRef.current.copy(
+                        object.position
+                    );
+
+                    dragOffsetRef.current.sub(
+                        groundHit[0].point
+                    );
+                }
+
+                renderer.domElement.style.cursor =
+                    "grabbing";
+            }
+        };
+
+        // -------------------------
+        // Drag Move
+        // -------------------------
+        const handlePointerMove = (
+            event: PointerEvent
+        ) => {
+            if (
+                !draggedObjectRef.current
+            )
+                return;
+
+            updateMousePosition(event);
+
+            raycasterRef.current.setFromCamera(
+                mouseRef.current,
+                camera
+            );
+
+            const groundHit =
+                raycasterRef.current.intersectObject(
+                    ground
+                );
+
+            if (groundHit.length > 0) {
+                const point =
+                    groundHit[0].point;
+
+                draggedObjectRef.current.position.x =
+                    point.x +
+                    dragOffsetRef.current.x;
+
+                draggedObjectRef.current.position.z =
+                    point.z +
+                    dragOffsetRef.current.z;
+            }
+        };
+
+        // -------------------------
+        // Drag End
+        // -------------------------
+        const handlePointerUp = (
+            event: PointerEvent
+        ) => {
+
+            // =====================================
+            // Detect click vs drag
+            // =====================================
+            const dx =
+                event.clientX -
+                pointerDownPosRef.current.x;
+
+            const dy =
+                event.clientY -
+                pointerDownPosRef.current.y;
+
+            const moved =
+                Math.sqrt(dx * dx + dy * dy);
+
+            // =====================================
+            // Toggle switch if clicked
+            // =====================================
+            if (
+                moved < 6 &&
+                draggedObjectRef.current
+            ) {
+
+                const obj =
+                    draggedObjectRef.current;
+
+                // Check if object is switch
+                if (
+                    obj.userData.arm
+                ) {
+
+                    const arm =
+                        obj.userData.arm;
+
+                    const isClosed =
+                        obj.userData.isClosed;
+
+                    if (isClosed) {
+
+                        // OPEN
+                        arm.rotation.z =
+                            -0.45;
+
+                    } else {
+
+                        // CLOSED
+                        arm.rotation.z = 0;
+                    }
+
+                    obj.userData.isClosed =
+                        !isClosed;
+                }
+            }
+
+            draggedObjectRef.current =
+                null;
+
+            renderer.domElement.style.cursor =
+                "default";
+        };
+
+        renderer.domElement.addEventListener(
+            "pointerdown",
+            handlePointerDown
+        );
+
+        window.addEventListener(
+            "pointermove",
+            handlePointerMove
+        );
+
+        window.addEventListener(
+            "pointerup",
+            handlePointerUp
+        );
+
+        // -------------------------
+        // Resize
+        // -------------------------
+        const handleResize = () => {
+            const width =
+                mount.clientWidth;
+
+            const height =
+                mount.clientHeight;
+
+            camera.aspect =
+                width / height;
+
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(
+                width,
+                height
+            );
+        };
+
+        window.addEventListener(
+            "resize",
+            handleResize
+        );
+
+        // -------------------------
+        // Animation
+        // -------------------------
+        let frameId = 0;
+
+        const animate = () => {
+            frameId =
+                requestAnimationFrame(
+                    animate
+                );
+
+            checkCircuit();
+
+            solveCircuit();
+
+            updateVisualEffects();
+
+            updateMeterDisplays();
+
+            updateWires();
+
+            renderer.render(
+                scene,
+                camera
+            );
+        };
+
+        animate();
+
+        // -------------------------
+        // Cleanup
+        // -------------------------
+        return () => {
+            cancelAnimationFrame(frameId);
+
+            window.removeEventListener(
+                "resize",
+                handleResize
+            );
+
+            window.removeEventListener(
+                "pointermove",
+                handlePointerMove
+            );
+
+            window.removeEventListener(
+                "pointerup",
+                handlePointerUp
+            );
+
+            renderer.domElement.removeEventListener(
+                "pointerdown",
+                handlePointerDown
+            );
+
+            renderer.dispose();
+
+            scene.traverse((obj) => {
+                if (obj instanceof THREE.Mesh) {
+                    obj.geometry.dispose();
+
+                    if (
+                        Array.isArray(
+                            obj.material
+                        )
+                    ) {
+                        obj.material.forEach(
+                            (m) => m.dispose()
+                        );
+                    } else {
+                        obj.material.dispose();
+                    }
+                }
+            });
+
+            if (
+                mount &&
+                renderer.domElement
+                    .parentNode === mount
+            ) {
+                mount.removeChild(
+                    renderer.domElement
+                );
+            }
+        };
+    }, []);
+
+    return (
+        <div className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-white/10 bg-slate-300">
+            {/* THREE SCENE */}
+            <div
+                ref={mountRef}
+                className="absolute inset-0"
+            />
+
+            {/* SIDE MENU */}
+            <div
+                className={`absolute top-0 left-0 h-full transition-all duration-300 z-20 ${menuOpen
+                    ? "w-64"
+                    : "w-12"
+                    }`}
+            >
+                <div className="h-full bg-white/90 backdrop-blur-md border-r border-slate-300 shadow-xl flex">
+                    {/* CONTENT */}
+                    <div
+                        className={`flex-1 transition-opacity duration-200 overflow-y-auto overflow-x-hidden ${menuOpen
+                            ? "opacity-100"
+                            : "opacity-0 pointer-events-none"
+                            }`}
+                    >
+                        <div className="p-4 pb-24">
+                            <h2 className="text-lg font-black text-slate-700 mb-4">
+                                3D Objects
+                            </h2>
+
+                            <div className="space-y-3">
+                                {/* LIGHTBULB */}
+                                <button
+                                    onClick={() => spawnObject("lightbulb")}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    <div className="w-5 h-5 rounded-full bg-yellow-400 shadow-md shrink-0" />
+
+                                    <span className="font-medium text-slate-700">
+                                        Lightbulb
+                                    </span>
+                                </button>
+
+                                {/* VOLTMETER */}
+                                <button
+                                    onClick={() => spawnObject("voltmeter")}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    <div className="w-5 h-5 rounded border-2 border-blue-500 flex items-center justify-center text-[10px] font-black text-blue-500">
+                                        V
+                                    </div>
+
+                                    <span className="font-medium text-slate-700">
+                                        Vôn kế
+                                    </span>
+                                </button>
+
+                                {/* AMMETER */}
+                                <button
+                                    onClick={() => spawnObject("ammeter")}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    <div className="w-5 h-5 rounded border-2 border-emerald-500 flex items-center justify-center text-[10px] font-black text-emerald-500">
+                                        A
+                                    </div>
+
+                                    <span className="font-medium text-slate-700">
+                                        Ampe kế
+                                    </span>
+                                </button>
+
+                                {/* 1.5V BATTERY */}
+                                <button
+                                    onClick={() => spawnObject("battery15")}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    <div className="w-3 h-5 rounded bg-gradient-to-b from-blue-500 to-red-500" />
+
+                                    <span className="font-medium text-slate-700">
+                                        1.5V Battery
+                                    </span>
+                                </button>
+
+                                {/* 3V BATTERY */}
+                                <button
+                                    onClick={() => spawnObject("battery3")}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    <div className="flex gap-[2px]">
+                                        <div className="w-2 h-5 rounded bg-gradient-to-b from-blue-500 to-red-500" />
+                                        <div className="w-2 h-5 rounded bg-gradient-to-b from-blue-500 to-red-500" />
+                                    </div>
+
+                                    <span className="font-medium text-slate-700">
+                                        3V Battery
+                                    </span>
+                                </button>
+
+                                {/* COMPASS */}
+                                <button
+                                    onClick={() => spawnObject("compass")}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    <div className="w-5 h-5 rounded-full border-2 border-rose-500 relative">
+                                        <div className="absolute left-1/2 top-[2px] w-[2px] h-3 bg-rose-500 -translate-x-1/2" />
+                                    </div>
+
+                                    <span className="font-medium text-slate-700">
+                                        Compass
+                                    </span>
+                                </button>
+
+                                {/* SWITCH */}
+                                <button
+                                    onClick={() => spawnObject("switch")}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    <div className="w-5 h-5 flex items-center">
+                                        <div className="w-full h-[2px] bg-slate-700 rotate-[-25deg]" />
+                                    </div>
+
+                                    <span className="font-medium text-slate-700">
+                                        Switch
+                                    </span>
+                                </button>
+
+                                {/* ELECTROMAGNETIC COIL */}
+                                <button
+                                    onClick={() => spawnObject("coil")}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    <div className="flex gap-[2px]">
+                                        <div className="w-1 h-5 rounded bg-orange-500" />
+                                        <div className="w-1 h-5 rounded bg-orange-500" />
+                                        <div className="w-1 h-5 rounded bg-orange-500" />
+                                        <div className="w-1 h-5 rounded bg-orange-500" />
+                                    </div>
+
+                                    <span className="font-medium text-slate-700">
+                                        Electromagnetic Coil
+                                    </span>
+                                </button>
+
+                                {/* RESISTOR */}
+                                <button
+                                    onClick={() => spawnObject("resistor")}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    <div className="flex items-center gap-[2px]">
+                                        <div className="w-2 h-[2px] bg-slate-700" />
+                                        <div className="w-4 h-3 bg-amber-500 rounded-sm" />
+                                        <div className="w-2 h-[2px] bg-slate-700" />
+                                    </div>
+
+                                    <span className="font-medium text-slate-700">
+                                        Resistor
+                                    </span>
+                                </button>
+
+                                {/* THERMOMETER */}
+                                <button
+                                    onClick={() => spawnObject("thermometer")}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    <div className="relative w-3 h-5 flex items-end justify-center">
+                                        <div className="absolute bottom-0 w-3 h-3 rounded-full bg-red-500" />
+                                        <div className="w-[4px] h-5 rounded-full bg-red-400" />
+                                    </div>
+
+                                    <span className="font-medium text-slate-700">
+                                        Thermometer
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* TOGGLE BUTTON */}
+                    <button
+                        onClick={() =>
+                            setMenuOpen(
+                                !menuOpen
+                            )
+                        }
+                        className="w-12 flex items-center justify-center border-l border-slate-300 bg-white hover:bg-slate-100 transition-all"
+                    >
+                        <ChevronRight
+                            className={`w-5 h-5 text-slate-700 transition-transform duration-300 ${menuOpen
+                                ? "rotate-180"
+                                : ""
+                                }`}
+                        />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
