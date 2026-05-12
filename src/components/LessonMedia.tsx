@@ -1,15 +1,16 @@
 import { useCallback, useState } from "react";
 import { motion } from "framer-motion";
 import { ImagePlus, Volume2, Speaker, Box } from "lucide-react";
-import { ThreeScene } from "@/components/ThreeScene";
+import { ThreeSceneLesson20 } from "@/components/ThreeSceneLesson20";
 
 interface LessonMediaProps {
   title: string;
   summary: string;
   audioText: string;
+  ThreeSceneComponent?: React.ComponentType;
 }
 
-export function LessonMedia({ title, summary, audioText }: LessonMediaProps) {
+export function LessonMedia({ title, summary, audioText, ThreeSceneComponent }: LessonMediaProps) {
   const [speaking, setSpeaking] = useState(false);
 
   const speak = useCallback(() => {
@@ -80,7 +81,7 @@ export function LessonMedia({ title, summary, audioText }: LessonMediaProps) {
           <span className="text-xs font-semibold uppercase tracking-widest">Mô hình 3D</span>
         </div>
         <div className="rounded-3xl bg-slate-950/90 overflow-hidden">
-          <ThreeScene />
+          {ThreeSceneComponent ? <ThreeSceneComponent /> : null}
         </div>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
           Mô hình 3D tương tác dùng Three.js để học sinh quan sát nguồn, dây dẫn và đèn trong không gian ba chiều.
