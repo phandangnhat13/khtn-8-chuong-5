@@ -56,6 +56,23 @@ const getInternalConnections = (
 };
 
 export function ThreeSceneLesson23() {
+    const orbitTargetRef = useRef(
+        new THREE.Vector3(0, 0, 0)
+    );
+
+    const cameraDistanceRef = useRef(26);
+
+    const sphericalRef = useRef({
+        theta: 0,
+        phi: 1.1,
+    });
+
+    const cameraControlRef = useRef({
+        rotating: false,
+        panning: false,
+        lastX: 0,
+        lastY: 0,
+    });
     const mountRef =
         useRef<HTMLDivElement>(null);
 
@@ -1407,12 +1424,48 @@ export function ThreeSceneLesson23() {
                 1000
             );
 
-        // High top-down angle
-        camera.position.set(0, 24, 5);
-
-        camera.lookAt(0, 0, 0);
-
         cameraRef.current = camera;
+
+        // Initial orbit values
+        sphericalRef.current.theta = 0;
+        sphericalRef.current.phi = 1.1;
+
+        const updateCamera = () => {
+
+            const {
+                theta,
+                phi,
+            } = sphericalRef.current;
+
+            const distance =
+                cameraDistanceRef.current;
+
+            const target =
+                orbitTargetRef.current;
+
+            const x =
+                target.x +
+                distance *
+                Math.sin(phi) *
+                Math.sin(theta);
+
+            const y =
+                target.y +
+                distance *
+                Math.cos(phi);
+
+            const z =
+                target.z +
+                distance *
+                Math.sin(phi) *
+                Math.cos(theta);
+
+            camera.position.set(x, y, z);
+
+            camera.lookAt(target);
+        };
+
+        updateCamera();
 
         // -------------------------
         // Renderer
@@ -1552,6 +1605,78 @@ export function ThreeSceneLesson23() {
                 2 +
                 1;
         };
+        // -------------------------
+        // Camera Controls
+        // -------------------------
+        const handleContextMenu = (
+            event: MouseEvent
+        ) => {
+            event.preventDefault();
+        };
+
+        const handleWheel = (
+            event: WheelEvent
+        ) => {
+
+            event.preventDefault();
+
+            cameraDistanceRef.current +=
+                event.deltaY * 0.02;
+
+            cameraDistanceRef.current =
+                Math.max(
+                    5,
+                    Math.min(
+                        80,
+                        cameraDistanceRef.current
+                    )
+                );
+        };
+
+        const panCamera = (
+            deltaX: number,
+            deltaY: number
+        ) => {
+
+            const cameraDirection =
+                new THREE.Vector3();
+
+            camera.getWorldDirection(
+                cameraDirection
+            );
+
+            const right =
+                new THREE.Vector3()
+                    .crossVectors(
+                        cameraDirection,
+                        camera.up
+                    )
+                    .normalize();
+
+            const forward =
+                new THREE.Vector3()
+                    .crossVectors(
+                        right,
+                        camera.up
+                    )
+                    .normalize();
+
+            const speed =
+                cameraDistanceRef.current *
+                0.002;
+
+            orbitTargetRef.current.add(
+                right.multiplyScalar(
+                    -deltaX * speed
+                )
+            );
+
+            orbitTargetRef.current.add(
+                forward.multiplyScalar(
+                    -deltaY * speed
+                )
+            );
+        };
 
         // -------------------------
         // Drag Start
@@ -1559,10 +1684,18 @@ export function ThreeSceneLesson23() {
         const handlePointerDown = (
             event: PointerEvent
         ) => {
+
             pointerDownPosRef.current = {
                 x: event.clientX,
                 y: event.clientY,
             };
+
+            cameraControlRef.current.lastX =
+                event.clientX;
+
+            cameraControlRef.current.lastY =
+                event.clientY;
+
             updateMousePosition(event);
 
             raycasterRef.current.setFromCamera(
@@ -1573,6 +1706,7 @@ export function ThreeSceneLesson23() {
             // ============================================
             // TERMINAL INTERSECTION
             // ============================================
+
             const terminalHits =
                 raycasterRef.current.intersectObjects(
                     terminalObjectsRef.current,
@@ -1588,17 +1722,34 @@ export function ThreeSceneLesson23() {
                 return;
             }
 
+            // ============================================
+            // OBJECT INTERSECTION
+            // ============================================
+
             const intersects =
                 raycasterRef.current.intersectObjects(
                     draggableObjectsRef.current,
                     true
                 );
 
+            // ============================================
+            // DRAG OBJECT
+            // ============================================
+
             if (intersects.length > 0) {
+
+                // Right click should pan camera
+                if (event.button === 2) {
+
+                    cameraControlRef.current.panning =
+                        true;
+
+                    return;
+                }
+
                 let object =
                     intersects[0].object;
 
-                // Find top-level draggable parent
                 while (
                     object.parent &&
                     !draggableObjectsRef.current.includes(
@@ -1617,6 +1768,7 @@ export function ThreeSceneLesson23() {
                     );
 
                 if (groundHit.length > 0) {
+
                     dragOffsetRef.current.copy(
                         object.position
                     );
@@ -1628,6 +1780,26 @@ export function ThreeSceneLesson23() {
 
                 renderer.domElement.style.cursor =
                     "grabbing";
+
+                return;
+            }
+
+            // ============================================
+            // CAMERA CONTROLS
+            // ============================================
+
+            // Rotate only if NOT dragging object
+            if (event.button === 0) {
+
+                cameraControlRef.current.rotating =
+                    true;
+            }
+
+            // Pan
+            if (event.button === 2) {
+
+                cameraControlRef.current.panning =
+                    true;
             }
         };
 
@@ -1637,10 +1809,67 @@ export function ThreeSceneLesson23() {
         const handlePointerMove = (
             event: PointerEvent
         ) => {
+
+            const controls =
+                cameraControlRef.current;
+
+            const deltaX =
+                event.clientX -
+                controls.lastX;
+
+            const deltaY =
+                event.clientY -
+                controls.lastY;
+
+            controls.lastX =
+                event.clientX;
+
+            controls.lastY =
+                event.clientY;
+
+            // =====================================
+            // CAMERA ROTATE
+            // =====================================
+
+            if (controls.rotating) {
+
+                sphericalRef.current.theta -=
+                    deltaX * 0.008;
+
+                sphericalRef.current.phi -=
+                    deltaY * 0.008;
+
+                sphericalRef.current.phi =
+                    Math.max(
+                        0.15,
+                        Math.min(
+                            Math.PI - 0.15,
+                            sphericalRef.current.phi
+                        )
+                    );
+            }
+
+            // =====================================
+            // CAMERA PAN
+            // =====================================
+
+            if (controls.panning) {
+
+                panCamera(
+                    deltaX,
+                    deltaY
+                );
+            }
+
+            // =====================================
+            // OBJECT DRAG
+            // =====================================
+
             if (
                 !draggedObjectRef.current
-            )
+            ) {
                 return;
+            }
 
             updateMousePosition(event);
 
@@ -1655,6 +1884,7 @@ export function ThreeSceneLesson23() {
                 );
 
             if (groundHit.length > 0) {
+
                 const point =
                     groundHit[0].point;
 
@@ -1728,6 +1958,12 @@ export function ThreeSceneLesson23() {
                 }
             }
 
+            cameraControlRef.current.rotating =
+                false;
+
+            cameraControlRef.current.panning =
+                false;
+
             draggedObjectRef.current =
                 null;
 
@@ -1736,8 +1972,19 @@ export function ThreeSceneLesson23() {
         };
 
         renderer.domElement.addEventListener(
+
             "pointerdown",
             handlePointerDown
+        );
+        renderer.domElement.addEventListener(
+            "contextmenu",
+            handleContextMenu
+        );
+
+        renderer.domElement.addEventListener(
+            "wheel",
+            handleWheel,
+            { passive: false }
         );
 
         window.addEventListener(
@@ -1796,6 +2043,8 @@ export function ThreeSceneLesson23() {
             updateMeterDisplays();
 
             updateWires();
+
+            updateCamera();
 
             renderer.render(
                 scene,

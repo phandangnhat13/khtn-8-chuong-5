@@ -354,7 +354,6 @@ export default function Lesson20() {
       </LessonHeader>
 
       <LessonMedia
-        mediaVariant="electrostatic"
         title="Nhiễm điện do cọ xát"
         summary="Cọ xát thước nhựa với vải len tạo ra sự dịch chuyển electron và làm thước nhiễm điện, thu hút mẩu giấy nhẹ.
 Các học sinh có thể tương tác để thấy lực hút mạnh lên khi điện tích tăng."

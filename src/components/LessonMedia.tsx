@@ -51,9 +51,6 @@ export function LessonMedia({ title, summary, mediaVariant = "circuit", ThreeSce
         <div className="rounded-3xl bg-slate-950/90 overflow-hidden">
           {ThreeSceneComponent ? <ThreeSceneComponent /> : null}
         </div>
-        <div className="rounded-3xl bg-slate-900/80 overflow-hidden min-h-[420px] border border-white/10">
-          <ThreeScene variant={mediaVariant} />
-        </div>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
           {mediaVariant === "electrostatic" &&
             "Chuột trái xoay cảnh (Orbit). Kéo thước trên mặt bàn đến gần vải len để “cọ xát” — hạt electron chạy nhanh hơn khi ma sát."}

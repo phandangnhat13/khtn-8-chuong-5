@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useLessonShortcuts } from "@/hooks/useLessonShortcuts";
 import { LessonWrapUp } from "@/components/LessonWrapUp";
+import { ThreeScene } from "@/components/ThreeScene";
 
 type Connection = "series" | "parallel" | "none";
 
@@ -374,6 +375,7 @@ export default function Lesson2425() {
         title="Đo lường trong mạch điện"
         summary="Cường độ dòng điện (I) cho biết mức độ mạnh/yếu của dòng điện, được đo bằng Ampe kế (A). Hiệu điện thế (U) là sự chênh lệch điện thế giữa hai điểm, được đo bằng Vôn kế (V). Việc mắc đúng thiết bị đo là cực kỳ quan trọng để đảm bảo an toàn."
         audioText="Để đo dòng điện, ta dùng Ampe kế mắc nối tiếp. Để đo hiệu điện thế, ta dùng Vôn kế mắc song song. Tuyệt đối không mắc Ampe kế song song vì sẽ gây đoản mạch, gây cháy nổ."
+        ThreeSceneComponent={ThreeScene}
       />
 
       {/* Guide Cards */}
