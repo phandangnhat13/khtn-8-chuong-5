@@ -2,6 +2,16 @@ import { useCallback, useRef } from "react";
 
 type SoundType = "click" | "success" | "error" | "spark" | "switch" | "buzz";
 
+const API_BASE_URL = ((import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:4000").replace(/\/$/, "");
+
+const SOUND_FILES: Partial<Record<SoundType, string>> = {
+  click: "button_press.wav",
+  success: "correct_sound.wav",
+  error: "incorrect_sound.wav",
+  spark: "spark.wav",
+  switch: "switch.wav",
+};
+
 const SOUNDS: Record<SoundType, { freq: number; type: OscillatorType; duration: number; gain: number; ramp?: number }> = {
   click: { freq: 800, type: "sine", duration: 0.05, gain: 0.15 },
   success: { freq: 520, type: "sine", duration: 0.25, gain: 0.2, ramp: 780 },
@@ -13,6 +23,7 @@ const SOUNDS: Record<SoundType, { freq: number; type: OscillatorType; duration: 
 
 export function useSound() {
   const ctxRef = useRef<AudioContext | null>(null);
+  const audioCacheRef = useRef<Partial<Record<SoundType, HTMLAudioElement>>>({});
 
   const getCtx = useCallback(() => {
     if (!ctxRef.current) {
@@ -21,7 +32,7 @@ export function useSound() {
     return ctxRef.current;
   }, []);
 
-  const play = useCallback((type: SoundType) => {
+  const playTone = useCallback((type: SoundType) => {
     try {
       const ctx = getCtx();
       const s = SOUNDS[type];
@@ -42,6 +53,26 @@ export function useSound() {
       // Audio not supported
     }
   }, [getCtx]);
+
+  const play = useCallback((type: SoundType) => {
+    const fileName = SOUND_FILES[type];
+    if (!fileName || typeof Audio === "undefined") {
+      playTone(type);
+      return;
+    }
+
+    try {
+      const cachedAudio = audioCacheRef.current[type] ?? new Audio(`${API_BASE_URL}/resources/sfx/${fileName}`);
+      cachedAudio.preload = "auto";
+      audioCacheRef.current[type] = cachedAudio;
+
+      const audio = cachedAudio.cloneNode(true) as HTMLAudioElement;
+      audio.volume = 0.7;
+      void audio.play().catch(() => playTone(type));
+    } catch {
+      playTone(type);
+    }
+  }, [playTone]);
 
   return { play };
 }

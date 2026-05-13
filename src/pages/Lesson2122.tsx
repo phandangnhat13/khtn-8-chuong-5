@@ -80,6 +80,7 @@ function hitComp(mx: number, my: number, comps: Component[]): Component | undefi
     const c = comps[i];
     if (Math.abs(mx - c.x) < 45 && Math.abs(my - c.y) < 30) return c;
   }
+  return undefined;
 }
 
 function nearWireIndex(mx: number, my: number, wires: Wire[], comps: Component[], thresh = 8): number {
@@ -538,6 +539,7 @@ export default function Lesson2122() {
       </LessonHeader>
 
       <LessonMedia
+        mediaVariant="circuit"
         title="Thiết kế và lắp ráp mạch điện"
         summary="Mạch điện kín được tạo ra khi có nguồn điện, dây dẫn và các thiết bị tiêu thụ điện được kết nối liên tục với nhau. Mũi tên (hạt vàng) biểu diễn chiều dòng điện chạy từ cực dương (+) qua cực âm (-) của nguồn điện."
         audioText="Hãy thử nối các chốt của linh kiện để tạo thành một vòng khép kín. Sau đó, nhấn chạy mô phỏng và đóng công tắc. Nếu đèn sáng, bạn đã ráp đúng một mạch điện kín."
